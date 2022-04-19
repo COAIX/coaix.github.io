@@ -1,0 +1,539 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MySQL的锁 - COAIX</title>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate" />
+    <meta name="keywords" content="COAIX,"> 
+    <meta name="description" content="求知若饥，虚心若愚,锁有哪些锁？
+
+
+
+
+
+
+
+从锁粒度分类(一般)
+行锁-&amp;gt;也成为记录锁
+
+
+
+表锁
+
+
+
+库锁(全局锁)
+
+
+
+
+
+
+从对数据操作的类型
+读锁(共享锁)
+
+
+
+写锁(排他锁)
+
+
+
+
+
+
+补充,"> 
+    <meta name="author" content="COAIX"> 
+    <link rel="alternative" href="atom.xml" title="COAIX" type="application/atom+xml"> 
+    <link rel="icon" href="/img/favicon.png"> 
+    
+    
+    
+    <meta name="twitter:card" content="summary"/>
+    <meta name="twitter:title" content="MySQL的锁 - COAIX"/>
+    <meta name="twitter:description" content="求知若饥，虚心若愚,锁有哪些锁？
+
+
+
+
+
+
+
+从锁粒度分类(一般)
+行锁-&amp;gt;也成为记录锁
+
+
+
+表锁
+
+
+
+库锁(全局锁)
+
+
+
+
+
+
+从对数据操作的类型
+读锁(共享锁)
+
+
+
+写锁(排他锁)
+
+
+
+
+
+
+补充,"/>
+    
+    
+    
+    
+    <meta property="og:site_name" content="COAIX"/>
+    <meta property="og:type" content="object"/>
+    <meta property="og:title" content="MySQL的锁 - COAIX"/>
+    <meta property="og:description" content="求知若饥，虚心若愚,锁有哪些锁？
+
+
+
+
+
+
+
+从锁粒度分类(一般)
+行锁-&amp;gt;也成为记录锁
+
+
+
+表锁
+
+
+
+库锁(全局锁)
+
+
+
+
+
+
+从对数据操作的类型
+读锁(共享锁)
+
+
+
+写锁(排他锁)
+
+
+
+
+
+
+补充,"/>
+    
+<link rel="stylesheet" href="/css/diaspora.css">
+
+<meta name="generator" content="Hexo 6.1.0"></head>
+
+<body class="loading">
+    <span id="config-title" style="display:none">COAIX</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="iconfont icon-home image-icon" href="javascript:;" data-url="http://coaix.cloud"></a>
+    <div title="播放/暂停" class="iconfont icon-play"></div>
+    <h3 class="subtitle">MySQL的锁</h3>
+    <div class="social">
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="iconfont icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class='main'>
+        <h1 class="title">MySQL的锁</h1>
+        <div class="stuff">
+            <span>六月 16, 2021</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <h1 id="锁"><a href="#锁" class="headerlink" title="锁"></a>锁</h1><h2 id="有哪些锁？"><a href="#有哪些锁？" class="headerlink" title="有哪些锁？"></a>有哪些锁？</h2><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>从锁粒度分类(一般)</strong></td>
+<td>行锁-&gt;也成为记录锁</td>
+</tr>
+<tr>
+<td></td>
+<td>表锁</td>
+</tr>
+<tr>
+<td></td>
+<td>库锁(全局锁)</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><strong>从对数据操作的类型</strong></td>
+<td>读锁(共享锁)</td>
+</tr>
+<tr>
+<td></td>
+<td>写锁(排他锁)</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><strong>补充</strong></td>
+<td>悲观锁(上面都是)</td>
+</tr>
+<tr>
+<td></td>
+<td>乐观锁-&gt;数据版本（Version）-&gt;CAS</td>
+</tr>
+</tbody></table>
+<p>39</p>
+<p><strong>InnoDB</strong>会自动给涉及<strong>UPDATE、DELETE、INSERT</strong>语句数据集加排他锁,<strong>SELECT</strong>语句不会自动加锁</p>
+<p><strong>InnoDB</strong>在默认的情况下，select是不加任何行锁的,事务可以通过以下语句显示给记录集加共享锁或排他锁。</p>
+<p>默认不会加读锁！但 MySQL InnoDB 的<code>可重复读</code>并不保证避免<code>幻读</code>(幻读是专指新增加的行)，需要应用使用加锁读来保证。而这个加锁度使用到的机制就是 <strong>next-key locks</strong>。</p>
+<ul>
+<li><code>共享锁(S)</code>：SELECT * FROM table_name WHERE … <strong>LOCK IN SHARE MODE</strong></li>
+<li><code>排他锁(X)</code>：SELECT * FROM table_name WHERE … <strong>FOR UPDATE</strong></li>
+</ul>
+<p><strong><mark>LOCK IN SHARE MODE</mark></strong></p>
+<p>只锁<strong>覆盖索引</strong></p>
+<p><strong><mark>FOR UPDATE</mark></strong></p>
+<p>会认为你要修改数据，给<strong>主键</strong>也一块锁上</p>
+<blockquote>
+<p><strong>MyISAM</strong>在执行查询语句<strong>SELECT</strong>前，<strong>会自动给涉及的所有表加读锁</strong>，在执行<strong>增、删、改</strong>操作前，<strong>会自动给涉及的表加写锁，这个过程并不需要用户干预</strong></p>
+</blockquote>
+<h2 id="全局锁"><a href="#全局锁" class="headerlink" title="全局锁"></a><strong>全局锁</strong></h2><p><strong><code>Flush tables with read lock (FTWRL)</code></strong>:<strong>全局读锁</strong>,让整个库处于<strong>只读状态</strong>，如果客户端异常，会自动释放这个锁，如果是用<code>set global readonly=true</code>的方式不会自动释放这个锁</p>
+<p>全局锁的典型**<code>使用场景</code><strong>是，做</strong>全库逻辑备份**</p>
+<h2 id="表级锁"><a href="#表级锁" class="headerlink" title="表级锁"></a>表级锁</h2><blockquote>
+<p><strong><code>表锁</code></strong> &amp; <strong><code>元数据锁 MDL</code></strong></p>
+</blockquote>
+<p>表锁的语法是 <strong><code>lock tables … read/write</code></strong></p>
+<p>还有另一种自动加的<code>MDL（metadata lock)</code>：在访问一个表的时候会被<strong>自动加上</strong></p>
+<p><strong>MDL:</strong></p>
+<blockquote>
+<p>当对一个表做<strong>增删改查</strong>操作的时候，加<strong>MDL读锁</strong>；当要对表做<strong>结构变更</strong>操作的时候，加<strong>MDL写锁。</strong></p>
+</blockquote>
+<p><strong>增删改查</strong>  ➕ <strong><code>MDL读锁</code></strong></p>
+<p><strong>表结构变更</strong> ➕ <strong><code>MDL写锁</code></strong></p>
+<ul>
+<li><strong>读锁</strong>之间不互斥，因此你可以有多个线程同时对一张表<strong>增删改查</strong>。</li>
+<li><strong>读写锁之间、写锁之间是互斥的</strong>，用来保证变更表结构操作的安全性。因此，如果有两个线程要同时给一个表加字段，其中一个要等另一个执行完才能开始执行。</li>
+</ul>
+<h2 id="两阶段锁协议"><a href="#两阶段锁协议" class="headerlink" title="两阶段锁协议"></a>两阶段锁协议</h2><blockquote>
+<p><strong>在 InnoDB 事务中，行锁是在需要的时候才加上的，但并不是不需要了就立刻释放，而是要等到事务结束时才释放。这个就是两阶段锁协议。</strong></p>
+</blockquote>
+<p>优化场景:将<strong>并发度高</strong>的语句放在后面执行</p>
+<h2 id="死锁和死锁检测"><a href="#死锁和死锁检测" class="headerlink" title="死锁和死锁检测"></a><strong>死锁和死锁检测</strong></h2><ul>
+<li>一种策略是，<strong>直接进入等待</strong>，直到<strong>超时</strong>。这个超时时间可以通过参数 <strong><code>innodb_lock_wait_timeout(默认50s)</code></strong> 来设置。</li>
+<li>另一种策略是，发起<strong>死锁检测</strong>，发现死锁后，<strong>主动回滚死锁链条中的某一个事务</strong>，让其他事务得以继续执行。将参数 <strong><code>innodb_deadlock_detect</code></strong> 设置为 on，表示开启这个逻辑。</li>
+</ul>
+<p>一般选择<strong>死锁检测</strong>，但是每条语句都要进行死锁检测，无疑耗费大量CPU资源</p>
+<p><strong><mark>解决策略</mark></strong></p>
+<p><strong>你可以考虑通过将一行改成逻辑上的多行来减少锁冲突。</strong></p>
+<p>还是以影院账户为例，可以考虑放在多条记录上，比如 10 个记录，影院的账户总额等于这 10 个记录的值的总和。这样每次要给影院账户加金额的时候，随机选其中一条记录来加。这样每次冲突概率变成原来的 1&#x2F;10，可以减少锁等待个数，也就减少了死锁检测的CPU 消耗。</p>
+<h2 id="next-key-lock"><a href="#next-key-lock" class="headerlink" title="next-key lock"></a>next-key lock</h2><h2 id="加锁规则"><a href="#加锁规则" class="headerlink" title="加锁规则"></a>加锁规则</h2><p><strong>锁是加在<code>索引</code>上的</strong>-&gt;数据是存在主键索引上的</p>
+<p>next-key lock是**<mark>可重复读级别</mark><strong>才有的，也就是</strong><code>间隙锁</code><strong>和</strong><code>行锁</code>**，可重复读级别有</p>
+<p><strong><mark>读提交级别</mark><strong>的话没有</strong><code>间隙锁</code><strong>，有</strong><code>行锁</code></strong></p>
+<blockquote>
+<p>间隙锁例如(5,10)内别的session不能insert了但是还是可以update的，因为幻读指的是新增行数据</p>
+</blockquote>
+<p><img src="/Mysql45/tmp7BE0.png" alt="tmp7BE0"></p>
+<blockquote>
+<p>只有**<code>等值查询</code>**可以退化锁</p>
+<ul>
+<li><strong><code>等值查询</code></strong> + <strong><code>唯一索引</code></strong>-&gt; 退化成  <strong><code>行锁</code></strong></li>
+<li><strong><code>等值查询</code></strong> + <strong><code>索引</code></strong>   -&gt; 退化成 <strong><code>间隙锁</code></strong></li>
+</ul>
+</blockquote>
+<p><img src="/Mysql45/image-20220320175935663.png" alt="image-20220320175935663"></p>
+<p>直接举例:</p>
+<p>库</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CREATE</span> <span class="keyword">TABLE</span> `t` (</span><br><span class="line">  `id` <span class="type">int</span>(<span class="number">11</span>) <span class="keyword">NOT</span> <span class="keyword">NULL</span>,</span><br><span class="line">  `c` <span class="type">int</span>(<span class="number">11</span>) <span class="keyword">DEFAULT</span> <span class="keyword">NULL</span>,</span><br><span class="line">  `d` <span class="type">int</span>(<span class="number">11</span>) <span class="keyword">DEFAULT</span> <span class="keyword">NULL</span>,</span><br><span class="line">  <span class="keyword">PRIMARY</span> KEY (`id`),</span><br><span class="line">  KEY `c` (`c`)</span><br><span class="line">) ENGINE<span class="operator">=</span>InnoDB;</span><br><span class="line"></span><br><span class="line"><span class="keyword">insert</span> <span class="keyword">into</span> t <span class="keyword">values</span>(<span class="number">0</span>,<span class="number">0</span>,<span class="number">0</span>),(<span class="number">5</span>,<span class="number">5</span>,<span class="number">5</span>),(<span class="number">10</span>,<span class="number">10</span>,<span class="number">10</span>),(<span class="number">15</span>,<span class="number">15</span>,<span class="number">15</span>),(<span class="number">20</span>,<span class="number">20</span>,<span class="number">20</span>),(<span class="number">25</span>,<span class="number">25</span>,<span class="number">25</span>);</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th align="center">id(not null,primary key)</th>
+<th>c(key)</th>
+<th>d</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">0</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td align="center">5</td>
+<td>5</td>
+<td>5</td>
+</tr>
+<tr>
+<td align="center">10</td>
+<td>10</td>
+<td>10</td>
+</tr>
+<tr>
+<td align="center">15</td>
+<td>15</td>
+<td>15</td>
+</tr>
+<tr>
+<td align="center">20</td>
+<td>20</td>
+<td>20</td>
+</tr>
+<tr>
+<td align="center">25</td>
+<td>25</td>
+<td>25</td>
+</tr>
+</tbody></table>
+<h2 id="1-主键上的等值查询"><a href="#1-主键上的等值查询" class="headerlink" title="1.主键上的等值查询"></a>1.主键上的等值查询</h2><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">BEGIN</span>;</span><br><span class="line"><span class="keyword">UPDATE</span> <span class="keyword">SET</span> D <span class="operator">=</span> D <span class="operator">+</span> <span class="number">1</span> <span class="keyword">WHERE</span> ID <span class="operator">=</span> <span class="number">7</span>;</span><br></pre></td></tr></table></figure>
+
+<p>主键索引，直接找7没找到，找到中间的间隙(5,10)</p>
+<ol>
+<li>加锁(5,10]</li>
+<li>(5,10]退化-&gt;(5，10)<code>如果找到了的话会退化成行锁</code></li>
+</ol>
+<blockquote>
+<p>(5,10)不能insert了，但是别的session还是可以update的</p>
+</blockquote>
+<h2 id="2-非唯一索引（包括主键索引）等值查询"><a href="#2-非唯一索引（包括主键索引）等值查询" class="headerlink" title="2.非唯一索引（包括主键索引）等值查询"></a>2.非唯一索引（包括主键索引）等值查询</h2><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">begin</span>;</span><br><span class="line"><span class="keyword">select</span> id <span class="keyword">from</span> t <span class="keyword">where</span> c <span class="operator">=</span> <span class="number">5</span> lock <span class="keyword">in</span> share mode;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>这里只用到了key c 覆盖索引<code>c:id</code>,<strong>只在覆盖索引上上了锁，没有在主键上上锁</strong>，但是如果是<strong>for update</strong>的话，系统会认为你要修改数据，<strong>会在主键上也上锁</strong></p>
+</blockquote>
+<ol>
+<li>加锁(0,5] (5,10]</li>
+<li>(5,10]-&gt;(5,10)</li>
+</ol>
+<h2 id="3-主键索引范围锁"><a href="#3-主键索引范围锁" class="headerlink" title="3.主键索引范围锁"></a>3.主键索引范围锁</h2><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> t <span class="keyword">where</span> id <span class="operator">=</span> <span class="number">10</span> <span class="keyword">for</span> <span class="keyword">update</span>;</span><br><span class="line"><span class="operator">-</span><span class="operator">&gt;</span><span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> id <span class="operator">&gt;=</span><span class="number">10</span> <span class="keyword">and</span> id <span class="operator">&lt;</span> <span class="number">11</span> <span class="keyword">for</span> <span class="keyword">update</span>;</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>首先需要等值查询查到id&#x3D;10，加锁(5,10]</li>
+<li>找得到10退化成行锁10</li>
+<li>向右范围查询，加锁(10,15]</li>
+<li><strong><del>最右不满足条件，退化(10,15)</del>不会执行这一步，因为这个时候等值查询已经结束了，向右是范围查询</strong></li>
+</ol>
+<h2 id="4-非唯一索引范围查询"><a href="#4-非唯一索引范围查询" class="headerlink" title="4.非唯一索引范围查询"></a>4.非唯一索引范围查询</h2><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">begin</span>;</span><br><span class="line"><span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> t <span class="keyword">where</span>  c <span class="operator">&gt;=</span> <span class="number">10</span> <span class="keyword">and</span> c <span class="operator">&lt;</span> <span class="number">11</span> <span class="keyword">for</span> <span class="keyword">update</span>;</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>查询10，加锁(5,10]</li>
+<li>找到了，不会退化成行锁，因为不是唯一索引</li>
+<li>范围查询,(10,15]</li>
+</ol>
+<h2 id="5-唯一索引bug"><a href="#5-唯一索引bug" class="headerlink" title="5.唯一索引bug"></a>5.唯一索引<code>bug</code></h2><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">begin</span>;</span><br><span class="line"><span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> t <span class="keyword">where</span> id <span class="operator">&gt;</span> <span class="number">10</span> <span class="keyword">and</span> id <span class="operator">&lt;=</span> <span class="number">15</span> <span class="keyword">for</span> <span class="keyword">update</span>;</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>直接找到(10,15]这个间隙</li>
+<li>向右范围查询，找到15了，但是在8.0.26版本前，会有个bug，按理来说唯一索引不需要再往后找了，毕竟就此一个</li>
+<li>但是还是继续往后面找，找到(15,20]</li>
+</ol>
+<h2 id="6-非唯一索引上存在等值"><a href="#6-非唯一索引上存在等值" class="headerlink" title="6.非唯一索引上存在等值"></a>6.非唯一索引上存在等值</h2><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">insert</span> <span class="keyword">into</span> v <span class="keyword">values</span>(<span class="number">30</span>,<span class="number">10</span>,<span class="number">30</span>);</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th align="center">id(not null,primary key)</th>
+<th>c(key)</th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">0</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td align="center">5</td>
+<td>5</td>
+<td>5</td>
+</tr>
+<tr>
+<td align="center">10</td>
+<td>10</td>
+<td>10</td>
+</tr>
+<tr>
+<td align="center">15</td>
+<td>15</td>
+<td>15</td>
+</tr>
+<tr>
+<td align="center">20</td>
+<td>20</td>
+<td>20</td>
+</tr>
+<tr>
+<td align="center">25</td>
+<td>25</td>
+<td>25</td>
+</tr>
+<tr>
+<td align="center"><span style="background:#FF9999;">30</span></td>
+<td><span style="background:#FF9999;">10</span></td>
+<td><span style="background:#FF9999;">30</span></td>
+</tr>
+</tbody></table>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">delete</span> <span class="keyword">from</span> t <span class="keyword">where</span> c <span class="operator">=</span> <span class="number">10</span>;</span><br></pre></td></tr></table></figure>
+
+<p>加锁情况：(5,10] (10,15)</p>
+<img src="https://static001.geekbang.org/resource/image/bb/24/bb0ad92483d71f0dcaeeef278f89cb24.png" alt="img" style="zoom:50%;" />
+
+<p>虽然索引C相同都为10，但是因为id是不同的，所以还是存在间隙 です</p>
+<h2 id="7-limit语句加锁"><a href="#7-limit语句加锁" class="headerlink" title="7.limit语句加锁"></a>7.limit语句加锁</h2><p><code>用上面那个例子</code></p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">begin</span>;</span><br><span class="line"><span class="keyword">delete</span> <span class="keyword">from</span> t <span class="keyword">where</span> c<span class="operator">=</span><span class="number">10</span> limit <span class="number">2</span>;</span><br></pre></td></tr></table></figure>
+
+<p>这个时候只会加锁(5,10]，<strong>不会继续往后面找</strong>，因为已经limit 2了，**<code>找到两个就返回了，后面的不会搜</code>**</p>
+<h2 id="8-不等号里面的等值查询"><a href="#8-不等号里面的等值查询" class="headerlink" title="8.不等号里面的等值查询"></a>8.不等号里面的等值查询</h2><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">begin</span>;</span><br><span class="line"><span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> t <span class="keyword">where</span> id<span class="operator">&gt;</span><span class="number">9</span> <span class="keyword">and</span> id<span class="operator">&lt;</span><span class="number">12</span> <span class="keyword">order</span> <span class="keyword">by</span> id <span class="keyword">desc</span> <span class="keyword">for</span> <span class="keyword">update</span>;</span><br></pre></td></tr></table></figure>
+
+<p><img src="/Mysql45/tmp9271.png" alt="tmp9271"></p>
+<p>先要找到12的位置(因为倒序)，但是没有，只找到了（10，15]这个间隙，<strong>等值查询</strong>退化成(10,15)</p>
+<p>然后👈范围查询，一路查到第一个不满足的情况5，(0,5],(5,10]</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">begin</span>;</span><br><span class="line"><span class="keyword">select</span> c <span class="keyword">from</span> t <span class="keyword">where</span> c <span class="operator">&gt;</span> <span class="number">5</span> lock <span class="keyword">in</span> share mode;</span><br></pre></td></tr></table></figure>
+
+<p>直接找到(5,10]这个间隙，然后向右查询(10,15](15,20](20,25]和(25,<code>supremum</code>]</p>
+<blockquote>
+<p><strong>supremum</strong> innodb默认会给的一个最大值</p>
+</blockquote>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">update</span> t <span class="keyword">set</span> c <span class="operator">=</span> <span class="number">1</span> <span class="keyword">where</span>  c <span class="operator">=</span> <span class="number">5</span>;</span><br></pre></td></tr></table></figure>
+
+<p><img src="/Mysql45/tmpE33D.png" alt="tmpE33D"></p>
+<h2 id="9-等值查询的过程"><a href="#9-等值查询的过程" class="headerlink" title="9.等值查询的过程"></a>9.等值查询的过程</h2><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">begin</span>;</span><br><span class="line"><span class="keyword">select</span> id <span class="keyword">from</span> t <span class="keyword">where</span> c <span class="keyword">in</span>(<span class="number">5</span>,<span class="number">20</span>,<span class="number">10</span>) lock <span class="keyword">in</span> share mode;</span><br></pre></td></tr></table></figure>
+
+<p><img src="/Mysql45/tmp4D72.png" alt="tmp4D72"></p>
+<p><code>这个加锁的步骤，是一个一个加的，锁是在执行过程中加的</code></p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">select</span> id <span class="keyword">from</span> t <span class="keyword">where</span> c <span class="keyword">in</span>(<span class="number">5</span>,<span class="number">20</span>,<span class="number">10</span>) <span class="keyword">order</span> <span class="keyword">by</span> c <span class="keyword">desc</span> <span class="keyword">for</span> <span class="keyword">update</span>;</span><br></pre></td></tr></table></figure>
+
+<p>如果同时有倒序，可能会产生<strong>死锁</strong></p>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link"
+		data-enable="false"
+        data-ae="false"
+        data-ci=""
+        data-cs=""
+        data-r=""
+        data-o=""
+        data-a=""
+        data-d="false"
+    >查看评论</div>
+
+
+    </div>
+    
+</div>
+
+
+    </div>
+</div>
+</body>
+
+
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/typed.js"></script>
+<script src="/js/diaspora.js"></script>
+
+
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+
+
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+</html>

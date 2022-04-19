@@ -1,0 +1,520 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>集合框架源码再学习 - COAIX</title>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate" />
+    <meta name="keywords" content="COAIX,"> 
+    <meta name="description" content="求知若饥，虚心若愚,HashMap 1.8
+putVal桶中插入元素扩容
+
+如果还没有数组，会先进行resize初始化
+
+如果已经有了数组
+
+插入数组下标(数组长度 - 1) &amp;amp; hash
+
+这个hash是经过,"> 
+    <meta name="author" content="COAIX"> 
+    <link rel="alternative" href="atom.xml" title="COAIX" type="application/atom+xml"> 
+    <link rel="icon" href="/img/favicon.png"> 
+    
+    
+    
+    <meta name="twitter:card" content="summary"/>
+    <meta name="twitter:title" content="集合框架源码再学习 - COAIX"/>
+    <meta name="twitter:description" content="求知若饥，虚心若愚,HashMap 1.8
+putVal桶中插入元素扩容
+
+如果还没有数组，会先进行resize初始化
+
+如果已经有了数组
+
+插入数组下标(数组长度 - 1) &amp;amp; hash
+
+这个hash是经过,"/>
+    
+    
+    
+    
+    <meta property="og:site_name" content="COAIX"/>
+    <meta property="og:type" content="object"/>
+    <meta property="og:title" content="集合框架源码再学习 - COAIX"/>
+    <meta property="og:description" content="求知若饥，虚心若愚,HashMap 1.8
+putVal桶中插入元素扩容
+
+如果还没有数组，会先进行resize初始化
+
+如果已经有了数组
+
+插入数组下标(数组长度 - 1) &amp;amp; hash
+
+这个hash是经过,"/>
+    
+<link rel="stylesheet" href="/css/diaspora.css">
+
+<meta name="generator" content="Hexo 6.1.0"></head>
+
+<body class="loading">
+    <span id="config-title" style="display:none">COAIX</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="iconfont icon-home image-icon" href="javascript:;" data-url="http://coaix.cloud"></a>
+    <div title="播放/暂停" class="iconfont icon-play"></div>
+    <h3 class="subtitle">集合框架源码再学习</h3>
+    <div class="social">
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="iconfont icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class='main'>
+        <h1 class="title">集合框架源码再学习</h1>
+        <div class="stuff">
+            <span>一月 16, 2022</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <h3 id="HashMap-1-8"><a href="#HashMap-1-8" class="headerlink" title="HashMap 1.8"></a>HashMap 1.8</h3><ul>
+<li><p><strong>putVal</strong>桶中插入元素扩容</p>
+<ul>
+<li><p>如果还没有数组，会先进行<strong>resize</strong>初始化</p>
+</li>
+<li><p>如果已经有了数组</p>
+<ul>
+<li><p>插入数组<strong>下标<code>(数组长度 - 1) &amp; hash</code></strong></p>
+<ul>
+<li><p>这个hash是经过哈希扰乱**<code>key.hashCode^(h &gt;&gt;&gt; 16)</code>**异或：相同为0不同为1</p>
+<ul>
+<li>目的：右位移16位，正好是32bit的一半，为了能够<strong>有效利用前16位</strong>，<strong>混合原始哈希码的高位和低位，以此来加大低位的随机性</strong>。而且混合后的低位掺杂了高位的部分特征，这样高位的信息也被变相保留下来。如果只利用后面几位，就算我的散列值分布再松散，要是只取最后几位的话，碰撞也会很严重。更要命的是如果散列本身做得不好，分布上成<a target="_blank" rel="noopener" href="https://www.zhihu.com/search?q=%E7%AD%89%E5%B7%AE%E6%95%B0%E5%88%97&search_source=Entity&hybrid_search_source=Entity&hybrid_search_extra=%7B%22sourceType%22:%22answer%22,%22sourceId%22:111577937%7D">等差数列</a>的漏洞，恰好使最后几个低位呈现<strong>规律性重复</strong></li>
+<li><a target="_blank" rel="noopener" href="https://www.zhihu.com/question/20733617/answer/111577937">hash方法原理</a></li>
+</ul>
+</li>
+<li><p>插入，首先<strong>找到桶的头元素</strong></p>
+<ul>
+<li>如果头元素跟自己hash值相同<ul>
+<li><strong><code>判断key相同 || key.equals(k)</code></strong></li>
+</ul>
+</li>
+<li>如果是树，进入树的<strong>putTreeVal</strong></li>
+<li>如果是链表，则进入链表的插入节点或者节点存在退出<ul>
+<li>如果链表长度超过了树化阈值8，<strong>尝试</strong>树化<ul>
+<li>如果当前总元素少于<strong>64</strong>-&gt;<code>resize</code></li>
+<li>否则成为红黑树<code>treeify</code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>如果是修改元素，直接退出</p>
+</li>
+<li><p>如果是新增了元素</p>
+<ul>
+<li><p>判断**++size(总键值对个数)<strong>是否大于扩容阈值<code>threshold</code>，大于进入</strong>resize()**扩容</p>
+<blockquote>
+<p>如何判断是修改还是新增，设计的很巧妙，用一个记录节点记录，如果找得到旧值，这个节点就会非空，如果找不到旧值，就会成为null，然后最后根据判断null还是有值决定是否判断要不要扩容</p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><strong>resize扩容策略</strong> -&gt; <strong>当超过阈值的时候进行数组扩容</strong></p>
+<ul>
+<li><p>如果HashMap中<strong>还没有</strong>数组</p>
+<ul>
+<li>将数组初始化为**<code>16</code><strong>长度，扩容阈值为</strong><code>0.75 * 16 = 12</code>**</li>
+</ul>
+</li>
+<li><p>如果HashMao中<strong>已经有</strong>数组了</p>
+<ul>
+<li>新数组长度为旧数组长度的一倍，**<code>oldTab.length &lt;&lt; 1 </code>**</li>
+</ul>
+</li>
+<li><p>然后开始<strong>迁移</strong>旧数组到新数组</p>
+<ul>
+<li><p>找到数组中有元素的位置，开始迁移</p>
+<ul>
+<li><p>当这个桶中<strong>只有这一个元素</strong>的时候，直接赋值到新数组上**<code>newTab[e.hash &amp; (newCap - 1)] = e</code>**</p>
+</li>
+<li><p>如果是<strong>红黑树</strong>节点，走红黑树迁移流程<code>split</code></p>
+</li>
+<li><p>如果是有一个<strong>链表</strong></p>
+<ul>
+<li><p><strong><code>e.hash &amp; oldCap</code></strong></p>
+</li>
+<li><p>&#96;&#96;&#96;java<br>&#x2F;&#x2F;记录低位<br>Node&lt;K,V&gt; loHead &#x3D; null, loTail &#x3D; null;<br>&#x2F;&#x2F;记录高位<br>Node&lt;K,V&gt; hiHead &#x3D; null, hiTail &#x3D; null;<br>&#x2F;&#x2F;解析-&gt;扩容之后，相当于比原来多保留了一位<br>&#x2F;&#x2F;这一位可以是1，可以是0<br>&#x2F;&#x2F;相当于新下标要么是原来的，要么是原来的加上2幂<br>OldCap&#x3D;16<br>1 1011-&gt;11<br>0 1011-&gt;27 (11+16)</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">- ```java</span><br><span class="line">  ---------		---------</span><br><span class="line">  |loTail |   -&gt; 	|hiTail |</span><br><span class="line">  ---------		---------</span><br><span class="line">      或者</span><br><span class="line">  ---------		---------</span><br><span class="line">  |hiTail |   -&gt; 	|loTail |</span><br><span class="line">  ---------		---------</span><br><span class="line">      //为了防止这种情况，断开这个联系-&gt; .next=null</span><br><span class="line">  if (loTail != null) &#123;</span><br><span class="line">      loTail.next = null;			</span><br><span class="line">      newTab[j] = loHead;			//最后将地位链表迁移到新数组</span><br><span class="line">  &#125;</span><br><span class="line">  if (hiTail != null) &#123;</span><br><span class="line">      hiTail.next = null;</span><br><span class="line">      newTab[j + oldCap] = hiHead; //最后将高位链表迁移到新数组</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="红黑树"><a href="#红黑树" class="headerlink" title="红黑树"></a>红黑树</h3><p>演变-&gt;**<code>2-3</code><strong>树(左倾)-&gt;</strong><code>2-3-4</code>**树变体</p>
+<blockquote>
+<p>1，每个节点要么是红色，要么是黑色。</p>
+<p>2，根节点必须是黑色。叶子节点必须是黑色NULL节点。</p>
+<p>3，红色节点不能连续。</p>
+<p>4，对于每个节点，从该点至叶子节点的任何路径，都含有相同个数的黑色节点。</p>
+<p>5，能够以O(log2(N))的时间复杂度进行搜索、插入、删除操作。此外,任何不平衡都会在3次旋转之内解决。</p>
+</blockquote>
+<p><a target="_blank" rel="noopener" href="https://blog.csdn.net/chen_zhang_yu/article/details/52415077?utm_medium=distribute.pc_relevant.none-task-blog-baidujs_title-2">红黑树的演变(2-3树)</a></p>
+<p><img src="/%E6%8E%92%E5%BA%8F/image-20220313104023423.png" alt="image-20220313104023423"></p>
+<h3 id="ArraysList"><a href="#ArraysList" class="headerlink" title="ArraysList"></a>ArraysList</h3><p>没有添加任何元素的时候-&gt;容量为<code>0</code>-&gt;懒加载</p>
+<p>添加了一个元素之后-&gt;容量变成<code>10</code>-&gt;Default Capacity</p>
+<h4 id="属性"><a href="#属性" class="headerlink" title="属性"></a>属性</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">DEFAULT_CAPACITY</span> <span class="operator">=</span> <span class="number">10</span>;</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> Object[] EMPTY_ELEMENTDATA = &#123;&#125;;<span class="comment">//用于判断或者给容量为0的空数组赋值</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> Object[] DEFAULTCAPACITY_EMPTY_ELEMENTDATA = &#123;&#125;;<span class="comment">//用于无参构造赋值</span></span><br><span class="line"><span class="keyword">transient</span> Object[] elementData; <span class="comment">// non-private to simplify nested class access</span></span><br><span class="line"><span class="keyword">private</span> <span class="type">int</span> size;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="title function_">ArrayList</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="built_in">this</span>.elementData = DEFAULTCAPACITY_EMPTY_ELEMENTDATA;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="扩容-gt-add"><a href="#扩容-gt-add" class="headerlink" title="扩容-&gt;add"></a>扩容-&gt;add</h4><p><strong><code>原长度+原长度/2</code></strong></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">如何进入扩容？</span><br><span class="line">    当需要的容量比原来的容量大的时候就会进入扩容</span><br><span class="line">    特例：当第一add的时候不是需要<span class="number">1</span>，而是需要<span class="number">10</span>-&gt;因为会进入一步特殊的calculateCapacity	</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title function_">grow</span><span class="params">(<span class="type">int</span> minCapacity)</span> &#123;</span><br><span class="line">    <span class="comment">// overflow-conscious code</span></span><br><span class="line">    <span class="type">int</span> <span class="variable">oldCapacity</span> <span class="operator">=</span> elementData.length;</span><br><span class="line">    <span class="type">int</span> <span class="variable">newCapacity</span> <span class="operator">=</span> oldCapacity + (oldCapacity &gt;&gt; <span class="number">1</span>); <span class="comment">//原长度+原长度/2</span></span><br><span class="line">    <span class="comment">//如果扩容之后比最小容量还是要小-&gt;采用最小容量</span></span><br><span class="line">    <span class="comment">//最小容量是原size+1，也就是至少需要的容量-&gt;ArrayList的做法是给原容量扩大一点</span></span><br><span class="line">    <span class="keyword">if</span> (newCapacity - minCapacity &lt; <span class="number">0</span>)					</span><br><span class="line">        newCapacity = minCapacity;</span><br><span class="line">    <span class="comment">//if (newCapacity - MAX_ARRAY_SIZE &gt; 0)	一般走不到这一步</span></span><br><span class="line">    <span class="comment">//    newCapacity = hugeCapacity(minCapacity);</span></span><br><span class="line">    <span class="comment">// minCapacity is usually close to size, so this is a win:</span></span><br><span class="line">    elementData = Arrays.copyOf(elementData, newCapacity); <span class="comment">// 利用copyOf进行扩容</span></span><br><span class="line">&#125;</span><br><span class="line">扩容完之后到add方法-&gt;	elementData[size++] = e; -&gt;size只有在真正填入数组的时候会++</span><br></pre></td></tr></table></figure>
+
+<h4 id="删除"><a href="#删除" class="headerlink" title="删除"></a>删除</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> <span class="variable">numMoved</span> <span class="operator">=</span> size - index - <span class="number">1</span>;<span class="comment">//计算出删除数组之后的元素有多少</span></span><br><span class="line"><span class="comment">//将原数组的index+1到末尾复制到原数组的index到末尾</span></span><br><span class="line">System.arraycopy(elementData, index+<span class="number">1</span>, elementData, index,numMoved);</span><br><span class="line"><span class="comment">//收尾工作-&gt;将最后的一个元素-&gt;arraycopy没能删除掉的元素进行删除</span></span><br><span class="line"><span class="comment">// clear to let GC do its work-&gt;让GC明确做它的工作</span></span><br><span class="line">elementData[--size] = <span class="literal">null</span>; </span><br></pre></td></tr></table></figure>
+
+<h3 id="LinkedList"><a href="#LinkedList" class="headerlink" title="LinkedList"></a>LinkedList</h3><h4 id="属性-1"><a href="#属性-1" class="headerlink" title="属性"></a>属性</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">transient</span> <span class="type">int</span> <span class="variable">size</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line"><span class="keyword">transient</span> Node&lt;E&gt; first;	<span class="comment">//头节点</span></span><br><span class="line"><span class="keyword">transient</span> Node&lt;E&gt; last;		<span class="comment">//尾节点</span></span><br><span class="line"><span class="keyword">public</span> <span class="title function_">LinkedList</span><span class="params">()</span> &#123;<span class="comment">//初始化的时候啥也不干</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="add"><a href="#add" class="headerlink" title="add"></a>add</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> <span class="title function_">linkLast</span><span class="params">(E e)</span> &#123;</span><br><span class="line">        <span class="keyword">final</span> Node&lt;E&gt; l = last;	<span class="comment">//记录之前的最后一个元素</span></span><br><span class="line">        <span class="keyword">final</span> Node&lt;E&gt; newNode = <span class="keyword">new</span> <span class="title class_">Node</span>&lt;&gt;(l, e, <span class="literal">null</span>);	<span class="comment">//新建一个node节点</span></span><br><span class="line">        last = newNode;	<span class="comment">//让新元素成为左右一个元素</span></span><br><span class="line">        <span class="keyword">if</span> (l == <span class="literal">null</span>)	<span class="comment">//如果之前没有元素还会让他成为首个元素</span></span><br><span class="line">            first = newNode;</span><br><span class="line">        <span class="keyword">else</span>			<span class="comment">//否则让之前的元素尾部指向新元素</span></span><br><span class="line">            l.next = newNode;</span><br><span class="line">        size++;			<span class="comment">//让size++</span></span><br><span class="line">        modCount++;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="remove"><a href="#remove" class="headerlink" title="remove"></a>remove</h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> E <span class="title function_">remove</span><span class="params">(<span class="type">int</span> index)</span> &#123;</span><br><span class="line">        checkElementIndex(index);<span class="comment">//先进行检查，看看是否存在</span></span><br><span class="line">        <span class="keyword">return</span> unlink(node(index));<span class="comment">//找到当前节点删除</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//存在-&gt;进行删除</span></span><br><span class="line"><span class="comment">//主要思路-&gt;让前驱的next指向后继-&gt;并且把删除元素最后置为null方便GC-&gt;size--</span></span><br><span class="line"><span class="comment">//如果是首元素或者尾元素还会处理LinkedList的首尾元素</span></span><br><span class="line">E <span class="title function_">unlink</span><span class="params">(Node&lt;E&gt; x)</span> &#123; <span class="comment">// 删除这个节点</span></span><br><span class="line">        <span class="comment">// assert x != null;</span></span><br><span class="line">        <span class="keyword">final</span> <span class="type">E</span> <span class="variable">element</span> <span class="operator">=</span> x.item; </span><br><span class="line">        <span class="keyword">final</span> Node&lt;E&gt; next = x.next; <span class="comment">//记录x节点的后继</span></span><br><span class="line">        <span class="keyword">final</span> Node&lt;E&gt; prev = x.prev;<span class="comment">//记录x节点的前驱</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (prev == <span class="literal">null</span>) &#123; </span><br><span class="line">            first = next;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            prev.next = next;</span><br><span class="line">            x.prev = <span class="literal">null</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (next == <span class="literal">null</span>) &#123;</span><br><span class="line">            last = prev;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            next.prev = prev;</span><br><span class="line">            x.next = <span class="literal">null</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        x.item = <span class="literal">null</span>;</span><br><span class="line">        size--;</span><br><span class="line">        modCount++;</span><br><span class="line">        <span class="keyword">return</span> element;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="HashSet"><a href="#HashSet" class="headerlink" title="HashSet"></a>HashSet</h3><p>就是一个HashMap</p>
+<p>将<strong>插入元素</strong>作为<strong>key</strong></p>
+<p><strong>HashSet</strong>有一个全局唯一的<strong>PRESENT</strong>指向的<strong>Object对象</strong>，add的时候使用其作为map的<strong>value</strong>。</p>
+<p>remove(Object o)的时候<code>return m.remove(o)==PRESENT;</code>判断返回value是否为<strong>PRESENT</strong></p>
+<blockquote>
+<p><strong><code>HashMap</code><strong>的put-&gt;<strong>putVal</strong>-&gt;方法的返回值为</strong>null</strong>或者<strong>value</strong>。如果put<strong>成功的话返回null</strong>，如果put失败的话，说明put的key已经存在了，就会<strong>返回已经存在该key的value值</strong>。</p>
+<p>如果这个PRESENT用null的话，无论是移除成功还是移除不成功都会返回null</p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">transient</span> HashMap&lt;E,Object&gt; map;</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">Object</span> <span class="variable">PRESENT</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Object</span>();<span class="comment">//用作value</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="TreeSet"><a href="#TreeSet" class="headerlink" title="TreeSet"></a>TreeSet</h3><p>就是用TreeMap实现的</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">|---SortSet 接口</span><br><span class="line">    |-----NavigableMap 接口 -&gt; 到最后还不是用的TreeMap</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">transient</span> NavigableMap&lt;E,Object&gt; m;</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">Object</span> <span class="variable">PRESENT</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Object</span>();</span><br><span class="line"><span class="keyword">public</span> <span class="title function_">TreeSet</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>(<span class="keyword">new</span> <span class="title class_">TreeMap</span>&lt;E,Object&gt;());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="TreeMap"><a href="#TreeMap" class="headerlink" title="TreeMap"></a>TreeMap</h3><blockquote>
+<p>用红黑树实现的</p>
+</blockquote>
+<p>属性</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> Comparator&lt;? <span class="built_in">super</span> K&gt; comparator;<span class="comment">//用于在此树形图中维护顺序的比较器</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">transient</span> Entry&lt;K,V&gt; root;</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">transient</span> <span class="type">int</span> <span class="variable">size</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">transient</span> <span class="type">int</span> <span class="variable">modCount</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line"><span class="comment">//内部类</span></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">class</span> <span class="title class_">Entry</span>&lt;K,V&gt; <span class="keyword">implements</span> <span class="title class_">Map</span>.Entry&lt;K,V&gt; &#123;</span><br><span class="line">        K key;</span><br><span class="line">        V value;</span><br><span class="line">        Entry&lt;K,V&gt; left;</span><br><span class="line">        Entry&lt;K,V&gt; right;</span><br><span class="line">        Entry&lt;K,V&gt; parent;</span><br><span class="line">        <span class="type">boolean</span> <span class="variable">color</span> <span class="operator">=</span> BLACK; <span class="comment">//红黑树</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="HashTable"><a href="#HashTable" class="headerlink" title="HashTable"></a>HashTable</h3><blockquote>
+<p>线程安全</p>
+</blockquote>
+<p><strong>rehash</strong>扩容-&gt;移除的时候采取的策略是<strong>大于扩容阈值</strong>直接扩容**<code>count &gt;= threshold</code><strong>-&gt;</strong><code>(oldCapacity &lt;&lt; 1) + 1</code>**</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">    <span class="keyword">private</span> <span class="keyword">transient</span> Entry&lt;?,?&gt;[] table;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">transient</span> <span class="type">int</span> count;</span><br><span class="line">	<span class="comment">//当表的大小超过此阈值时，表会重新散列</span></span><br><span class="line">    <span class="keyword">private</span> <span class="type">int</span> threshold; </span><br><span class="line">	<span class="comment">//哈希表的负载因子</span></span><br><span class="line">	<span class="keyword">private</span> <span class="type">float</span> loadFactor;	<span class="comment">//负载因子不是final static了-&gt;但是默认还是0.75-&gt;用参数形式变成默认0.75了</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">transient</span> <span class="type">int</span> <span class="variable">modCount</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">	<span class="comment">//空参构造方法</span></span><br><span class="line">     <span class="keyword">public</span> <span class="title function_">Hashtable</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>(<span class="number">11</span>, <span class="number">0.75f</span>);</span><br><span class="line">    &#125;</span><br><span class="line">调用-&gt;<span class="keyword">public</span> <span class="title function_">Hashtable</span><span class="params">(<span class="type">int</span> initialCapacity, <span class="type">float</span> loadFactor)</span> &#123;</span><br><span class="line"><span class="comment">//        if (initialCapacity &lt; 0)</span></span><br><span class="line"><span class="comment">//            throw new IllegalArgumentException(&quot;Illegal Capacity: &quot;+</span></span><br><span class="line"><span class="comment">//                                               initialCapacity);</span></span><br><span class="line"><span class="comment">//        if (loadFactor &lt;= 0 || Float.isNaN(loadFactor))</span></span><br><span class="line"><span class="comment">//            throw new IllegalArgumentException(&quot;Illegal Load: &quot;+loadFactor);</span></span><br><span class="line">		<span class="comment">//如果没有初始容量-&gt;让容量为1-&gt;不会进行懒加载</span></span><br><span class="line">        <span class="keyword">if</span> (initialCapacity==<span class="number">0</span>)</span><br><span class="line">            initialCapacity = <span class="number">1</span>;</span><br><span class="line">    	<span class="comment">//赋值负载因子(0.75)</span></span><br><span class="line">        <span class="built_in">this</span>.loadFactor = loadFactor;</span><br><span class="line">        table = <span class="keyword">new</span> <span class="title class_">Entry</span>&lt;?,?&gt;[initialCapacity];</span><br><span class="line">    	<span class="comment">//下一次扩容阈值-&gt; 当前容量*负载因子(0.75)</span></span><br><span class="line">        threshold = (<span class="type">int</span>)Math.min(initialCapacity * loadFactor, MAX_ARRAY_SIZE + <span class="number">1</span>);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="ConcurrentHashMap-1-8"><a href="#ConcurrentHashMap-1-8" class="headerlink" title="ConcurrentHashMap 1.8"></a>ConcurrentHashMap 1.8</h3><ul>
+<li>初始化，使用 cas 来保证并发安全，懒惰初始化 table</li>
+<li>树化，当 table.length &lt; 64 时，先尝试扩容，超过 64 时，并且 bin.length &gt; 8 时，会将链表树化，树化过程<br>会用 synchronized 锁住链表头</li>
+<li>put，如果该 bin 尚未创建，只需要使用 cas 创建 bin；如果已经有了，锁住链表头进行后续 put 操作，元素<br>添加至 bin 的尾部</li>
+<li>get，无锁操作仅需要保证可见性，扩容过程中 get 操作拿到的是 ForwardingNode 它会让 get 操作在新<br>table 进行搜索。</li>
+<li>扩容，扩容时以 bin 为单位进行，需要对 bin 进行 synchronized，但这时妙的是其它竞争线程也不是无事可<br>做，它们会帮助把其它 bin 进行扩容，扩容时平均只有 1&#x2F;6 的节点会把复制到新 table 中</li>
+<li>size，元素个数保存在 baseCount 中，并发时的个数变动保存在 CounterCell[] 当中。最后统计数量时累加<br>即可</li>
+</ul>
+<blockquote>
+<p><strong>不允许有空的Key</strong></p>
+<p><strong>哈希扰乱不同spread(key.hashCode())<code>(h ^ (h &gt;&gt;&gt; 16)) &amp; 0x7fffffff</code>会保证hash是个正整数，负数有另外用途</strong></p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th><strong>sizeCtl</strong></th>
+<th>值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>默认</td>
+<td>0</td>
+</tr>
+<tr>
+<td>初始化或扩容完成后</td>
+<td>下一次的扩容的阈值大小</td>
+</tr>
+<tr>
+<td>初始化时</td>
+<td>- 1</td>
+</tr>
+<tr>
+<td>扩容时</td>
+<td>- (1 + 扩容线程数)</td>
+</tr>
+</tbody></table>
+<table>
+<thead>
+<tr>
+<th>不同的节点类型</th>
+<th>哈希值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>ForwardingNode 扩容当中已经全部迁移走的桶头元素</td>
+<td>MOVED -1</td>
+</tr>
+<tr>
+<td>TREEBIN 红黑树</td>
+<td>TREEBIN  -1</td>
+</tr>
+</tbody></table>
+<p><strong>get（Object key）</strong></p>
+<blockquote>
+<p><strong>全程无锁</strong></p>
+</blockquote>
+<p>根据**<code>spread(key.hashCode())</code>**找桶头元素</p>
+<ul>
+<li>如果找到为null返回null</li>
+<li>找到了桶头节点<ul>
+<li>到之后哈希值相等、equals…替换value</li>
+<li>桶头节点hash值为负数<ul>
+<li>调用**<code>find</code>**<ul>
+<li>如果是<strong>ForwardingNode</strong>节点跑到新数组中找</li>
+<li>如果是树节点进入树找</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p><strong>putVal</strong></p>
+<blockquote>
+<p>利用CAS和synchronized(只锁头节点)</p>
+</blockquote>
+<p>如果连数组都还没有，进入**<code>initTable</code>**</p>
+<p>**<code>initTable</code>**：</p>
+<ul>
+<li>如果发现<strong>sizeCtl</strong>为-1，说明正在初始化，<code>Thread.yield();</code>放开CPU使用权</li>
+<li>否则尝试用CAS将<strong>sizeCtl</strong>变成-1<code>unsafe.compareAndSwapInt(this, sizeCtl_offset, sc, -1)</code><ul>
+<li>CAS成功，创建初始16大小数组，扩容阈值变成**<code>16*0.75</code><strong>，但是是用另外一种形式</strong><code>sc = n - (n &gt;&gt;&gt; 2)</code>-&gt;n-n&#x2F;4**</li>
+<li>失败，自旋尝试，尝试中发现已经创建出数组了退出</li>
+</ul>
+</li>
+</ul>
+<p>根据**<code>spread(key.hashCode())</code>**找桶头元素</p>
+<ul>
+<li><p>如果该位置数组头就为空，直接CAS赋值**<code>casTabAt(tab, i, null,new Node&lt;K,V&gt;(hash, key, value, null))</code>**</p>
+</li>
+<li><p>如果该位置**<code>头.hash=MOVED</code><strong>,帮忙搬迁</strong>helpTransfer**</p>
+</li>
+<li><p>否则就是正常状态了，<strong>锁住链表头synchronized (f){} 不是锁住整个表</strong></p>
+<ul>
+<li>是链表，链表插入或者update</li>
+<li>是树，树插入或update</li>
+</ul>
+</li>
+<li><p>如果是插入链表(binConut记录，初始为0)，则判定是否超过<strong>树化阈值TREEIFY_THRESHOLD</strong></p>
+<ul>
+<li>超过，对数组中那个位置尝试树化<code>treeifyBin</code><ul>
+<li>如果数组长度小于64，尝试预先调整表格大小来容纳相应数量的元素</li>
+<li>否则树化,锁住数组头，转换成树</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>最后<strong>addCount</strong>，原理跟LongAdder类似，用累加单元数组，累加单元(不同Thread分别在不同地方累加)增大并发度</p>
+</li>
+</ul>
+<h3 id="ConcurrentHashMap-1-7"><a href="#ConcurrentHashMap-1-7" class="headerlink" title="ConcurrentHashMap 1.7"></a>ConcurrentHashMap 1.7</h3><ul>
+<li>它维护了一个 <strong>segment 数组</strong>，每个 segment 对应一把锁 -&gt; 继承**<code>ReentrantLock</code>**<ul>
+<li>优点：如果多个线程访问不同的 segment，实际是没有冲突的，这与 jdk8 中是类似的</li>
+<li>缺点：Segments 数组默认大小为16，这个容量初始化指定后就不能改变了，并且不是懒惰初始化</li>
+</ul>
+</li>
+<li>this.<strong>segmentShift</strong> 和 this.<strong>segmentMask</strong> 的作用是<strong>决定将 key 的 hash 结果匹配到哪个 segment</strong></li>
+</ul>
+<p><strong>put</strong></p>
+<ul>
+<li>计算出segment下标<ul>
+<li>判断segment是否创建，没有则CAS创建</li>
+<li>进入segment的put流程，**<code>ReentrantLock</code>**尝试加锁<ul>
+<li>在这中间可能发生扩容rehash，不用加锁，因为在put中，put已经枷加锁了</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="LinkedBlockingQueue"><a href="#LinkedBlockingQueue" class="headerlink" title="LinkedBlockingQueue"></a>LinkedBlockingQueue</h3><p><strong>ReentrantLock</strong></p>
+<img src="排序/image-20220316201027678.png" alt="image-20220316201027678" style="zoom: 80%;" />
+
+<p><strong><code>==高明之处==</code></strong></p>
+<p><strong>ReentrantLock</strong></p>
+<p>在于<strong>用了两把锁和 dummy 节点</strong></p>
+<ul>
+<li>用一把锁，同一时刻，最多只允许有一个线程（生产者或消费者，二选一）执行</li>
+<li>用两把锁，同一时刻，<strong>可以允许两个线程同时（一个生产者与一个消费者）执</strong>行<ul>
+<li><strong>消费者与消费者线程仍然串行</strong></li>
+<li><strong>生产者与生产者线程仍然串行</strong></li>
+</ul>
+</li>
+</ul>
+<p>线程安全分析</p>
+<ul>
+<li>当节点总数大于 2 时（包括 dummy 节点），putLock 保证的是 last 节点的线程安全，takeLock 保证的是<br>head 节点的线程安全。两把锁保证了入队和出队没有竞争</li>
+<li>当节点总数等于 2 时（即一个 dummy 节点，一个正常节点）这时候，仍然是两把锁锁两个对象，不会竞争</li>
+<li>当节点总数等于 1 时（就一个 dummy 节点）这时 take 线程会被 notEmpty 条件阻塞，有竞争，会阻塞</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 用于 put(阻塞) offer(非阻塞)</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> <span class="type">ReentrantLock</span> <span class="variable">putLock</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ReentrantLock</span>();</span><br><span class="line"><span class="comment">// 用户 take(阻塞) poll(非阻塞)</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> <span class="type">ReentrantLock</span> <span class="variable">takeLock</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ReentrantLock</span>();</span><br></pre></td></tr></table></figure>
+
+<p><strong>put</strong></p>
+<ul>
+<li>count 用来维护元素计数</li>
+<li>满了等待</li>
+<li>有空位, 入队且计数加一<ul>
+<li>除了自己 put 以外, 队列还有空位, 由自己叫醒其他 put 线程,<strong>没有使用signalall是为了减少竞争</strong></li>
+</ul>
+</li>
+<li>如果队列中有一个元素, 叫醒 take 线程</li>
+</ul>
+<p><strong>take</strong></p>
+<ul>
+<li><p>如果队列中不只一个元素，就由take线程自己唤醒take阻塞线程</p>
+</li>
+<li><p>如果队列中只有一个空位时, 叫醒 put 线程</p>
+</li>
+</ul>
+<h4 id="LinkedBlockingQueue-与-ArrayBlockingQueue"><a href="#LinkedBlockingQueue-与-ArrayBlockingQueue" class="headerlink" title="LinkedBlockingQueue 与 ArrayBlockingQueue"></a>LinkedBlockingQueue 与 ArrayBlockingQueue</h4><p><strong>性能比较</strong></p>
+<ul>
+<li>Linked 支持有界，Array 强制有界</li>
+<li>Linked 实现是链表，Array 实现是数组</li>
+<li>Linked 是懒惰的，而 Array 需要提前初始化 Node 数组</li>
+<li>Linked 每次入队会生成新 Node，而 Array 的 Node 是提前创建好的</li>
+<li>Linked 两把锁，Array 一把锁</li>
+</ul>
+<h3 id="ConcurrentLinkedQueue"><a href="#ConcurrentLinkedQueue" class="headerlink" title="ConcurrentLinkedQueue"></a>ConcurrentLinkedQueue</h3><p><strong><code>CAS调节头尾节点</code></strong></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">offer</span><span class="params">(E e)</span> &#123;</span><br><span class="line">    Node&lt;E&gt; n = <span class="keyword">new</span> <span class="title class_">Node</span>&lt;&gt;(e, <span class="literal">null</span>);</span><br><span class="line">    <span class="keyword">while</span>(<span class="literal">true</span>) &#123;</span><br><span class="line">        <span class="comment">// 获取尾节点</span></span><br><span class="line">        AtomicReference&lt;Node&lt;E&gt;&gt; next = last.next;</span><br><span class="line">        <span class="comment">// S1: 真正尾节点的 next 是 null, cas 从 null 到新节点</span></span><br><span class="line">        <span class="keyword">if</span>(next.compareAndSet(<span class="literal">null</span>, n)) &#123;</span><br><span class="line">            <span class="comment">// 这时的 last 已经是倒数第二, next 不为空了, 其它线程的 cas 肯定失败</span></span><br><span class="line">            <span class="comment">// S2: 更新 last 为倒数第一的节点</span></span><br><span class="line">            last = n;</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="Comparable-amp-Comparator"><a href="#Comparable-amp-Comparator" class="headerlink" title="Comparable &amp; Comparator"></a>Comparable &amp; Comparator</h3><blockquote>
+<p>都是接口</p>
+<p><strong>Comparable</strong>相当于<strong>内部比较器</strong>,而<strong>Comparator</strong>相当于<strong>外部比较器</strong>。</p>
+</blockquote>
+<ul>
+<li>Comparable </li>
+<li>Comparator</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">k1.compareTo(k2)</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">comparator.compare(k1, k2)</span><br></pre></td></tr></table></figure>
+
+
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link"
+		data-enable="false"
+        data-ae="false"
+        data-ci=""
+        data-cs=""
+        data-r=""
+        data-o=""
+        data-a=""
+        data-d="false"
+    >查看评论</div>
+
+
+    </div>
+    
+</div>
+
+
+    </div>
+</div>
+</body>
+
+
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/typed.js"></script>
+<script src="/js/diaspora.js"></script>
+
+
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+
+
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+</html>

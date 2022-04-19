@@ -1,0 +1,187 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>count() - COAIX</title>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate" />
+    <meta name="keywords" content="COAIX,"> 
+    <meta name="description" content="求知若饥，虚心若愚,count()
+MyISAM 引擎把一个表的总行数存在了磁盘上，因此执行 count() 的时候会直接返回这个数，效率很高；
+而 InnoDB 引擎就麻烦了，它执行 count(*) 的时候，需要把,"> 
+    <meta name="author" content="COAIX"> 
+    <link rel="alternative" href="atom.xml" title="COAIX" type="application/atom+xml"> 
+    <link rel="icon" href="/img/favicon.png"> 
+    
+    
+    
+    <meta name="twitter:card" content="summary"/>
+    <meta name="twitter:title" content="count() - COAIX"/>
+    <meta name="twitter:description" content="求知若饥，虚心若愚,count()
+MyISAM 引擎把一个表的总行数存在了磁盘上，因此执行 count() 的时候会直接返回这个数，效率很高；
+而 InnoDB 引擎就麻烦了，它执行 count(*) 的时候，需要把,"/>
+    
+    
+    
+    
+    <meta property="og:site_name" content="COAIX"/>
+    <meta property="og:type" content="object"/>
+    <meta property="og:title" content="count() - COAIX"/>
+    <meta property="og:description" content="求知若饥，虚心若愚,count()
+MyISAM 引擎把一个表的总行数存在了磁盘上，因此执行 count() 的时候会直接返回这个数，效率很高；
+而 InnoDB 引擎就麻烦了，它执行 count(*) 的时候，需要把,"/>
+    
+<link rel="stylesheet" href="/css/diaspora.css">
+
+<meta name="generator" content="Hexo 6.1.0"></head>
+
+<body class="loading">
+    <span id="config-title" style="display:none">COAIX</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="iconfont icon-home image-icon" href="javascript:;" data-url="http://coaix.cloud"></a>
+    <div title="播放/暂停" class="iconfont icon-play"></div>
+    <h3 class="subtitle">count()</h3>
+    <div class="social">
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="iconfont icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class='main'>
+        <h1 class="title">count()</h1>
+        <div class="stuff">
+            <span>五月 17, 2021</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <h1 id="count"><a href="#count" class="headerlink" title="count()"></a>count()</h1><ul>
+<li><strong><mark>MyISAM</mark></strong> 引擎把一个<strong>表的总行数存在了磁盘上</strong>，因此执行 count(<em>) 的时候会直接返回这个数，效率很高；</em></li>
+<li>而 <strong><mark>InnoDB</mark></strong> 引擎就麻烦了，它执行 count(*) 的时候，需要把<strong>数据一行一行地从引擎里面读出来，然后累积计数</strong>。<ul>
+<li><strong>遍历哪个索引树得到的结果逻辑上都是一样的</strong>。因此，<strong>MySQL 优化器会找到最小的那棵树来遍历</strong>。在保证逻辑正确的前提下，尽量减少扫描的数据量，是数据库系统设计的通用法则之一。</li>
+</ul>
+</li>
+</ul>
+<ol>
+<li><strong>count()</strong> 是一个聚合函数，对于返回的结果集，<strong>一行行地判断</strong>，如果 count 函数的参数不是 NULL，累计值就加 1，否则不加。最后返回累计值。</li>
+<li><strong>count(字段）</strong>，则表示返回满足条件的数据行里面，<strong>参数“字段”不为 NULL 的总个数</strong></li>
+<li><strong>count(主键 id)</strong> 来说，<strong>InnoDB 引擎会遍历整张表</strong>，<strong>把每一行的 id 值都取出来</strong>，返回给 server 层。<strong>server 层拿到 id 后，判断是不可能为空的，就按行累加。</strong></li>
+<li><strong>count(1)</strong> 来说，<strong>InnoDB 引擎遍历整张表，但不取值</strong>。server 层对于*<em>返回的每一行，放一个数字“1”进去，判断是不可能为空的，按行累加。</em></li>
+<li><strong>count(*)</strong> 并不会把全部字段取出来，<strong>而是专门做了优化，不会把全部字段取出来</strong>。count(*) 肯定不是 null，按行累加。</li>
+</ol>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link"
+		data-enable="false"
+        data-ae="false"
+        data-ci=""
+        data-cs=""
+        data-r=""
+        data-o=""
+        data-a=""
+        data-d="false"
+    >查看评论</div>
+
+
+    </div>
+    
+</div>
+
+
+    </div>
+</div>
+</body>
+
+
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/typed.js"></script>
+<script src="/js/diaspora.js"></script>
+
+
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+
+
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+</html>

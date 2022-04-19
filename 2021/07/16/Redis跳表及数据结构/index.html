@@ -1,0 +1,233 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Redis跳表及数据结构 - COAIX</title>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate" />
+    <meta name="keywords" content="COAIX,"> 
+    <meta name="description" content="求知若饥，虚心若愚,跳表数据结构跳表结构
+12345typedef struct zskiplist &amp;#123;    struct zskiplistNode *header, *tail;    unsigned,"> 
+    <meta name="author" content="COAIX"> 
+    <link rel="alternative" href="atom.xml" title="COAIX" type="application/atom+xml"> 
+    <link rel="icon" href="/img/favicon.png"> 
+    
+    
+    
+    <meta name="twitter:card" content="summary"/>
+    <meta name="twitter:title" content="Redis跳表及数据结构 - COAIX"/>
+    <meta name="twitter:description" content="求知若饥，虚心若愚,跳表数据结构跳表结构
+12345typedef struct zskiplist &amp;#123;    struct zskiplistNode *header, *tail;    unsigned,"/>
+    
+    
+    
+    
+    <meta property="og:site_name" content="COAIX"/>
+    <meta property="og:type" content="object"/>
+    <meta property="og:title" content="Redis跳表及数据结构 - COAIX"/>
+    <meta property="og:description" content="求知若饥，虚心若愚,跳表数据结构跳表结构
+12345typedef struct zskiplist &amp;#123;    struct zskiplistNode *header, *tail;    unsigned,"/>
+    
+<link rel="stylesheet" href="/css/diaspora.css">
+
+<meta name="generator" content="Hexo 6.1.0"></head>
+
+<body class="loading">
+    <span id="config-title" style="display:none">COAIX</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="iconfont icon-home image-icon" href="javascript:;" data-url="http://coaix.cloud"></a>
+    <div title="播放/暂停" class="iconfont icon-play"></div>
+    <h3 class="subtitle">Redis跳表及数据结构</h3>
+    <div class="social">
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="iconfont icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class='main'>
+        <h1 class="title">Redis跳表及数据结构</h1>
+        <div class="stuff">
+            <span>七月 16, 2021</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <h1 id="跳表"><a href="#跳表" class="headerlink" title="跳表"></a>跳表</h1><h2 id="数据结构"><a href="#数据结构" class="headerlink" title="数据结构"></a>数据结构</h2><p>跳表结构</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">zskiplist</span> &#123;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">zskiplistNode</span> *<span class="title">header</span>, *<span class="title">tail</span>;</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> length;</span><br><span class="line">    <span class="type">int</span> level;</span><br><span class="line">&#125; zskiplist;</span><br></pre></td></tr></table></figure>
+
+<p>跳表节点结构</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">zskiplistNode</span> &#123;</span></span><br><span class="line">    <span class="comment">//Sorted Set中的元素</span></span><br><span class="line">    sds ele;</span><br><span class="line">    <span class="comment">//元素权重值</span></span><br><span class="line">    <span class="type">double</span> score;</span><br><span class="line">    <span class="comment">//&lt;-指针</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">zskiplistNode</span> *<span class="title">backward</span>;</span></span><br><span class="line">    <span class="comment">//节点的level数组，保存每层上的-&gt;指针和跨度</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">zskiplistLevel</span> &#123;</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">zskiplistNode</span> *<span class="title">forward</span>;</span></span><br><span class="line">        <span class="type">unsigned</span> <span class="type">long</span> span;</span><br><span class="line">    &#125; level[];</span><br><span class="line">&#125; zskiplistNode;</span><br></pre></td></tr></table></figure>
+
+<h2 id="查找过程"><a href="#查找过程" class="headerlink" title="查找过程"></a>查找过程</h2><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//获取跳表的表头</span></span><br><span class="line">x = zsl-&gt;header;</span><br><span class="line"><span class="comment">//从最大层数开始逐一遍历</span></span><br><span class="line"><span class="keyword">for</span> (i = zsl-&gt;level<span class="number">-1</span>; i &gt;= <span class="number">0</span>; i--) &#123;</span><br><span class="line">    <span class="comment">//如果当前元素就是要找的元素的话就直接返回了</span></span><br><span class="line">   ...</span><br><span class="line">    <span class="comment">//如果当前元素所在层的下一个节点不为空</span></span><br><span class="line">       <span class="comment">//并且下一个节点的权值小于找的权值</span></span><br><span class="line">       		<span class="comment">//或者下一个节点的权值等于找的权值 但是 sdscmp(,)-&gt; 字符串比找的要小</span></span><br><span class="line">    <span class="comment">//yes-&gt;就继续找同层的下一个节点</span></span><br><span class="line">    <span class="comment">//no -&gt;找下一层的节点</span></span><br><span class="line">   <span class="keyword">while</span> (x-&gt;level[i].forward &amp;&amp; (x-&gt;level[i].forward-&gt;score &lt; score || (x-&gt;level[i].forward-&gt;score == score </span><br><span class="line">    &amp;&amp; sdscmp(x-&gt;level[i].forward-&gt;ele,ele) &lt; <span class="number">0</span>))) &#123;</span><br><span class="line">      ...</span><br><span class="line">      x = x-&gt;level[i].forward;</span><br><span class="line">    &#125;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p> <strong><mark>同层往后找条件</mark></strong></p>
+<ul>
+<li>如果当层下一个元素为空</li>
+<li>如果当层下一个元素的score &lt; 当前节点score</li>
+<li>如果单层下一个元素的score &#x3D; 当前节点score<ul>
+<li>但是下一个节点的SDS值 &lt; 当前节点SDS值</li>
+</ul>
+</li>
+</ul>
+<p> <strong><mark>不往后找的话就跳到下一层</mark></strong></p>
+<h2 id="创建节点"><a href="#创建节点" class="headerlink" title="创建节点"></a>创建节点</h2><p>创建节点的索引层数随机<code>zslRandomLevel</code></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> ZSKIPLIST_MAXLEVEL 64  <span class="comment">//最大层数为64</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> ZSKIPLIST_P 0.25       <span class="comment">//随机数的值为0.25</span></span></span><br><span class="line"><span class="type">int</span> <span class="title function_">zslRandomLevel</span><span class="params">(<span class="type">void</span>)</span> &#123;</span><br><span class="line">    <span class="comment">//初始化层为1</span></span><br><span class="line">    <span class="type">int</span> level = <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">while</span> ((random()&amp;<span class="number">0xFFFF</span>) &lt; (ZSKIPLIST_P * <span class="number">0xFFFF</span>))</span><br><span class="line">        level += <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">return</span> (level&lt;ZSKIPLIST_MAXLEVEL) ? level : ZSKIPLIST_MAXLEVEL;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>zslRandomLevel</code> 函数会把层数初始化为 1，这也是结点的最小层数。</p>
+<p>然后，该函数会生成随机数，如果随机数的值小于 ZSKIPLIST_P（指跳表结点增加层数的概率，值为 0.25），那么层数就增加 1 层。因为随机数取值到[0,0.25) 范围内的概率不超过 25%，所以这也就表明了，每增加一层的概率不超过 25%。如果while循环下一轮还是小于0.25，则又++。</p>
+<h2 id="Zset中结构：哈希表和跳表组合使用"><a href="#Zset中结构：哈希表和跳表组合使用" class="headerlink" title="Zset中结构：哈希表和跳表组合使用"></a>Zset中结构：哈希表和跳表组合使用</h2><p><strong><mark>Zset结构</mark></strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">zset</span> &#123;</span></span><br><span class="line">    dict *dict; <span class="comment">//哈希表</span></span><br><span class="line">    zskiplist *zsl;	<span class="comment">//跳表</span></span><br><span class="line">&#125; zset;</span><br></pre></td></tr></table></figure>
+
+<p><strong><mark>zslCreate 创建Zset</mark></strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">zs = zmalloc(<span class="keyword">sizeof</span>(*zs));</span><br><span class="line">zs-&gt;dict = dictCreate(&amp;zsetDictType,<span class="literal">NULL</span>); <span class="comment">//创建哈希表</span></span><br><span class="line">zs-&gt;zsl = zslCreate();						<span class="comment">//创建跳表</span></span><br></pre></td></tr></table></figure>
+
+<p><strong><mark>zsetAdd 添加节点</mark></strong></p>
+<ol>
+<li><p><strong>首先，zsetAdd 函数会判定 Sorted Set 采用的是 <code>ziplist</code> 还是 <code>skiplist</code> 的编码方式。</strong>.</p>
+</li>
+<li><p><strong>然后，如果 zsetAdd 函数通过 <code>哈希表 dictFind</code> 函数发现要插入的元素已经存在，那么 zsetAdd 函数会判断<code>是否要增加元素的权重值</code>。</strong></p>
+<ul>
+<li><p><strong>如果权重值发生了变化，zsetAdd 函数就会调用 zslUpdateScore 函数，更新跳表中的元素权重值。紧接着，<code>zsetAdd 函数会把哈希表中该元素（对应哈希表中的 key）的 value 指向跳表结点中的权重值，这样一来，哈希表中元素的权重值就可以保持最新值了。</code></strong></p>
+<p><strong>hash中直接改value指针</strong> , dictEntry哈希字典Entry 结构⾥键值对中的值是⼀个「联合体 v」定义的，因此，键值对中的<strong>值可以是⼀个指向实际值的指针，或者是⼀个⽆符号的 64 位整数或有符号的 64 位整数或double 类的值。</strong> 这么做的好处是<strong>可以节省内存空间，因为当「值」是整数或浮点数时，就可以将值的数据<code>内嵌</code>在 dictEntry结构⾥，<code>⽆需再⽤⼀个指针指向实际的值</code>，从⽽节省了内存空间。</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">dictEntry</span> &#123;</span></span><br><span class="line">	<span class="comment">//键值对中的键</span></span><br><span class="line">	<span class="type">void</span> *key;</span><br><span class="line">	<span class="comment">//键值对中的值</span></span><br><span class="line">    <span class="class"><span class="keyword">union</span> &#123;</span></span><br><span class="line">        <span class="type">void</span> *val;</span><br><span class="line">        <span class="type">uint64_t</span> u64;</span><br><span class="line">        <span class="type">int64_t</span> s64;</span><br><span class="line">        <span class="type">double</span> d;</span><br><span class="line">    &#125; v;</span><br><span class="line">	<span class="comment">//指向下⼀个哈希表节点，形成链表</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">dictEntry</span> *<span class="title">next</span>;</span></span><br><span class="line">&#125; dictEntry;     </span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+</ol>
+<p><strong>源码</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//如果采用ziplist编码方式时，zsetAdd函数的处理逻辑</span></span><br><span class="line"> <span class="keyword">if</span> (zobj-&gt;encoding == OBJ_ENCODING_ZIPLIST) &#123;</span><br><span class="line">   ...</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//如果采用skiplist编码方式时，zsetAdd函数的处理逻辑</span></span><br><span class="line"><span class="keyword">else</span> <span class="keyword">if</span> (zobj-&gt;encoding == OBJ_ENCODING_SKIPLIST) &#123;</span><br><span class="line">        zset *zs = zobj-&gt;ptr;zskiplistNode *znode;dictEntry *de;</span><br><span class="line">        <span class="comment">//从哈希表中查询新增元素</span></span><br><span class="line">        de = dictFind(zs-&gt;dict,ele);</span><br><span class="line">        <span class="comment">//如果能查询到该元素</span></span><br><span class="line">        <span class="keyword">if</span> (de != <span class="literal">NULL</span>) &#123;</span><br><span class="line">            <span class="comment">//从哈希表中查询元素的权重</span></span><br><span class="line">            curscore = *(<span class="type">double</span>*)dictGetVal(de);</span><br><span class="line">            <span class="comment">//如果要更新元素权重值</span></span><br><span class="line">            <span class="keyword">if</span> (incr) &#123;</span><br><span class="line">                <span class="comment">//更新权重值</span></span><br><span class="line">            &#125;</span><br><span class="line">            <span class="comment">//如果权重发生变化了</span></span><br><span class="line">            <span class="keyword">if</span> (score != curscore) &#123;</span><br><span class="line">                <span class="comment">//更新跳表结点</span></span><br><span class="line">                znode = zslUpdateScore(zs-&gt;zsl,curscore,ele,score);</span><br><span class="line">                <span class="comment">//让哈希表元素的值指向跳表结点的权重</span></span><br><span class="line">                dictGetVal(de) = &amp;znode-&gt;score; </span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">       <span class="comment">//如果新元素不存在</span></span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span> (!xx) &#123;</span><br><span class="line">            ele = sdsdup(ele);</span><br><span class="line">            <span class="comment">//新插入跳表结点</span></span><br><span class="line">            znode = zslInsert(zs-&gt;zsl,score,ele);</span><br><span class="line">            <span class="comment">//新插入哈希表元素</span></span><br><span class="line">            serverAssert(dictAdd(zs-&gt;dict,ele,&amp;znode-&gt;score) == DICT_OK);</span><br><span class="line">            <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">        &#125; </span><br></pre></td></tr></table></figure>
+
+
+
+<h1 id="数据结构时间复杂度"><a href="#数据结构时间复杂度" class="headerlink" title="数据结构时间复杂度"></a>数据结构时间复杂度</h1><p><img src="/redis_COAIX/image-20220319100559632.png" alt="image-20220319100559632"></p>
+<ul>
+<li>范围操作比较耗时比如List的LRANGE 和 Zset的ZRANGE</li>
+</ul>
+<h1 id="使用什么数据结构"><a href="#使用什么数据结构" class="headerlink" title="使用什么数据结构"></a>使用什么数据结构</h1><img src="redis_COAIX/tmp5E0A.png" alt="tmp5E0A" style="zoom:80%;" />
+
+<p><strong><mark>Set</mark></strong>:统计手机 App 每天的新增用户数和第二天的留存用户数，正好对应了聚合统计。</p>
+<blockquote>
+<p>Set 的差集、并集和交集的计算复杂度较高，在数据量较大的情况下，如果直接执行这些计算，**<code>会导致 Redis 实例阻塞</code><strong>。所以，我给你分享一个小建议：你可以从</strong><code>主从集群中选择一个从库，让它专门负责聚合计算</code>**，或者是把数据读取到客户端，在客户端来完成聚合统计，这样就可以规避阻塞主库实例和其他从库实例的风险了。</p>
+</blockquote>
+<p><strong><mark>Sort Set &amp; List</mark></strong>:最新的评论，展示最新列表、排行榜等场景时，如果数据更新频繁或者需要分页显示，优先使用<strong>Sort Set</strong></p>
+<p>**<mark>Bitmap</mark>**：某用户的签到统计</p>
+<blockquote>
+<p>本身是用 <strong><code>String</code></strong> 类型作为底层数据结构实现的一种统计二值状态的数据类型。**<code>String 类型是会保存为二进制的字节数组</code>**，所以，Redis 就把字节数组的每个 bit 位利用起来，用来表示一个元素的二值状态。可以把 <strong><code>Bitmap 看作是一个 bit 数组。</code></strong></p>
+</blockquote>
+<p>**<mark>HyperLogLog &amp; Set</mark>**：统计一个集合中不重复的元素个数。对应到我们刚才介绍的场景中，就是统计网页的用户访问量。需要去重</p>
+<p><strong><mark>GEO</mark></strong>:带有地理位置的</p>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link"
+		data-enable="false"
+        data-ae="false"
+        data-ci=""
+        data-cs=""
+        data-r=""
+        data-o=""
+        data-a=""
+        data-d="false"
+    >查看评论</div>
+
+
+    </div>
+    
+</div>
+
+
+    </div>
+</div>
+</body>
+
+
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/typed.js"></script>
+<script src="/js/diaspora.js"></script>
+
+
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+
+
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+</html>

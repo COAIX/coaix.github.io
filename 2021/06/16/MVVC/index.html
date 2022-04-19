@@ -1,0 +1,211 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MVVC多版本并发控制 - COAIX</title>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate" />
+    <meta name="keywords" content="COAIX,"> 
+    <meta name="description" content="求知若饥，虚心若愚,MVVC 多版本并发控制
+一致性读视图，即 consistent read view，用于支持 RC（Read Committed，读提交）和 RR（Repeatable Read，可重复读）隔离级,"> 
+    <meta name="author" content="COAIX"> 
+    <link rel="alternative" href="atom.xml" title="COAIX" type="application/atom+xml"> 
+    <link rel="icon" href="/img/favicon.png"> 
+    
+    
+    
+    <meta name="twitter:card" content="summary"/>
+    <meta name="twitter:title" content="MVVC多版本并发控制 - COAIX"/>
+    <meta name="twitter:description" content="求知若饥，虚心若愚,MVVC 多版本并发控制
+一致性读视图，即 consistent read view，用于支持 RC（Read Committed，读提交）和 RR（Repeatable Read，可重复读）隔离级,"/>
+    
+    
+    
+    
+    <meta property="og:site_name" content="COAIX"/>
+    <meta property="og:type" content="object"/>
+    <meta property="og:title" content="MVVC多版本并发控制 - COAIX"/>
+    <meta property="og:description" content="求知若饥，虚心若愚,MVVC 多版本并发控制
+一致性读视图，即 consistent read view，用于支持 RC（Read Committed，读提交）和 RR（Repeatable Read，可重复读）隔离级,"/>
+    
+<link rel="stylesheet" href="/css/diaspora.css">
+
+<meta name="generator" content="Hexo 6.1.0"></head>
+
+<body class="loading">
+    <span id="config-title" style="display:none">COAIX</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="iconfont icon-home image-icon" href="javascript:;" data-url="http://coaix.cloud"></a>
+    <div title="播放/暂停" class="iconfont icon-play"></div>
+    <h3 class="subtitle">MVVC多版本并发控制</h3>
+    <div class="social">
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="iconfont icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class='main'>
+        <h1 class="title">MVVC多版本并发控制</h1>
+        <div class="stuff">
+            <span>六月 16, 2021</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <h1 id="MVVC-多版本并发控制"><a href="#MVVC-多版本并发控制" class="headerlink" title="MVVC 多版本并发控制"></a>MVVC 多版本并发控制</h1><blockquote>
+<p><strong>一致性读视图</strong>，即 <strong>consistent read view</strong>，用于支持 <strong>RC</strong>（Read Committed，读提交）和 <strong>RR</strong>（Repeatable Read，可重复读）隔离级别的实现。</p>
+</blockquote>
+<p><strong>RU</strong>：<strong>没有视图</strong>的概念，直接返回最小行数据。</p>
+<p><strong>RC</strong>级别下，**<code>MVCC视图</code>会在每一个语句前创建一个**，所以在RC级别下，一个事务是可以看到另外一个事务已经提交的内容，因为它在每一次查询之前都会重新给予最新的数据创建一个新的MVCC视图。 </p>
+<p><strong>RR</strong>级别下，**<code>MVCC视图</code>是在开始事务的时候就创建好了**，这个视图会一直使用，直到该事务结束。 这里要注意不同的隔离级别他们的一致性事务视图创建的时间点是不同的。  </p>
+<p><strong>Serial</strong>：<strong>通过锁来实现数据访问，每个事务实现串行化,没有视图的概念。</strong></p>
+<blockquote>
+<p><strong>RR-&gt;事务创建时</strong>：为第一条SELECT执行时，但是如果<code>start transaction with consistent snaptshot;</code>会直接创建read view</p>
+<p>tips：<code>Oracle</code>默认隔离级别RC</p>
+</blockquote>
+<h2 id="“快照”在-MVCC-里是怎么工作的？"><a href="#“快照”在-MVCC-里是怎么工作的？" class="headerlink" title="“快照”在 MVCC 里是怎么工作的？"></a><strong>“快照”在 MVCC 里是怎么工作的？</strong></h2><p>InnoDB 里面每个事务有一个唯一的事务 ID，叫作 <strong>transaction id</strong>。它是在事务开始的时候向 InnoDB 的事务系统申请的，是按申请顺序严格递增的。每次事务更新数据的时候，都会生成一个新的数据版本，将<strong>transaction id -&gt; trx_id</strong></p>
+<ul>
+<li>transaction id更新数据的事务才会生成对应的数据版本</li>
+<li>版本中包含本次数据的值,事务id,还有一个引用(指向上一个数据版本)</li>
+</ul>
+<blockquote>
+<p>这个<strong>transaction id</strong>，是Mysql记录了一个全局变量，每次申请事务的时候会++，为8字节，到顶之后会重置从0开始，Mysql重启也会让该值从0开始，不过不用担心，<strong>因为Mysql重启之后就会用新的binlog去记录</strong>，不用担心一个binlog中出现重复的</p>
+</blockquote>
+<p><strong>只记录了V4版本，V1，V2，V3以前的版本都是通过当前V4版本通过回滚操作日志undo log计算生成的</strong></p>
+<img src="https://static001.geekbang.org/resource/image/68/ed/68d08d277a6f7926a41cc5541d3dfced.png" alt="img" style="zoom:67%;" />
+
+<p><strong><mark>InnoDB</mark></strong> 为每个事务构造了一个<strong>数组</strong>，用来保存这个<strong>事务启动瞬间</strong>，当前正在<strong>“活跃”</strong>的所有<strong>事务 ID</strong>。“活跃”指的就是，**<code>启动了但还没提交</code>。**</p>
+<p><strong>低水位:</strong><code>数组</code>里面事务 ID 的最小值 <code>LW = MIN(Array)</code></p>
+<p>**高水位:**当前<code>系统里面</code>已经创建过的事务 ID 的最大值加 1 。<code>HW = MAX(System)+1</code></p>
+<img src="Mysql45/tmpAD2F.png" alt="tmpAD2F" style="zoom:50%;" />
+
+<ul>
+<li>&lt;&#x3D;低水位：可见</li>
+<li>低水位&lt; now &lt;高水位：<ul>
+<li>不在活跃数组：可见 <strong>事务晚开启，早提交</strong></li>
+<li>在活跃数组：不可见</li>
+</ul>
+</li>
+<li>&gt;高水位：不可见</li>
+</ul>
+<p>假如当前事务进来，访问的数据版本<strong>在高低水位中间，但是不在活跃数组中，说明已经提交了</strong>，是可见的直接返回，如果发现是<strong>在活跃数组中的，则不能访问</strong>，通过undo log向前推，直到发现<strong>不在活跃数组或者&lt;&#x3D;低水位</strong>，就可以访问该版本数据,在高水位和低水位之间的也有可能被看到，情况是：事务晚开启，早提交</p>
+<blockquote>
+<p>**<code>update</code><strong>和</strong><code>for update</code>**加锁的语句都会无视上面规则，统统”当前读”读取最新的版本数据</p>
+</blockquote>
+<p><strong>Update更新</strong>数据都是<strong>先读后写</strong>的，而这个读，只能读当前的值，称为“<strong>当前读</strong>”（current read）。</p>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link"
+		data-enable="false"
+        data-ae="false"
+        data-ci=""
+        data-cs=""
+        data-r=""
+        data-o=""
+        data-a=""
+        data-d="false"
+    >查看评论</div>
+
+
+    </div>
+    
+</div>
+
+
+    </div>
+</div>
+</body>
+
+
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/typed.js"></script>
+<script src="/js/diaspora.js"></script>
+
+
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+
+
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+</html>

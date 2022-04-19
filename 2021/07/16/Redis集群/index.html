@@ -1,0 +1,347 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Redis集群 - COAIX</title>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate" />
+    <meta name="keywords" content="COAIX,"> 
+    <meta name="description" content="求知若饥，虚心若愚,主从Redis 提供了主从库模式，以保证数据副本的一致，主从库之间采用的是读写分离的方式。多实例保存同一份数据
+
+读操作：主库、从库都可以接收；
+写操作：首先到主库执行，然后，主库将写操作同步给从库,"> 
+    <meta name="author" content="COAIX"> 
+    <link rel="alternative" href="atom.xml" title="COAIX" type="application/atom+xml"> 
+    <link rel="icon" href="/img/favicon.png"> 
+    
+    
+    
+    <meta name="twitter:card" content="summary"/>
+    <meta name="twitter:title" content="Redis集群 - COAIX"/>
+    <meta name="twitter:description" content="求知若饥，虚心若愚,主从Redis 提供了主从库模式，以保证数据副本的一致，主从库之间采用的是读写分离的方式。多实例保存同一份数据
+
+读操作：主库、从库都可以接收；
+写操作：首先到主库执行，然后，主库将写操作同步给从库,"/>
+    
+    
+    
+    
+    <meta property="og:site_name" content="COAIX"/>
+    <meta property="og:type" content="object"/>
+    <meta property="og:title" content="Redis集群 - COAIX"/>
+    <meta property="og:description" content="求知若饥，虚心若愚,主从Redis 提供了主从库模式，以保证数据副本的一致，主从库之间采用的是读写分离的方式。多实例保存同一份数据
+
+读操作：主库、从库都可以接收；
+写操作：首先到主库执行，然后，主库将写操作同步给从库,"/>
+    
+<link rel="stylesheet" href="/css/diaspora.css">
+
+<meta name="generator" content="Hexo 6.1.0"></head>
+
+<body class="loading">
+    <span id="config-title" style="display:none">COAIX</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="iconfont icon-home image-icon" href="javascript:;" data-url="http://coaix.cloud"></a>
+    <div title="播放/暂停" class="iconfont icon-play"></div>
+    <h3 class="subtitle">Redis集群</h3>
+    <div class="social">
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="iconfont icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class='main'>
+        <h1 class="title">Redis集群</h1>
+        <div class="stuff">
+            <span>七月 16, 2021</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <h1 id="主从"><a href="#主从" class="headerlink" title="主从"></a>主从</h1><p>Redis 提供了<strong>主从库模式</strong>，以保证数据副本的一致，主从库之间采用的是<strong>读写分离</strong>的方式。多实例保存同一份数据</p>
+<ul>
+<li><strong>读</strong>操作：主库、从库都可以接收；</li>
+<li><strong>写</strong>操作：<strong>首先到主库执行，然后，主库将写操作同步给从库。</strong></li>
+</ul>
+<p><img src="/redis_COAIX/tmp216F.png" alt="tmp216F"></p>
+<h2 id="主从一致"><a href="#主从一致" class="headerlink" title="主从一致"></a><strong>主从一致</strong></h2><h3 id="主从第一次同步"><a href="#主从第一次同步" class="headerlink" title="主从第一次同步"></a><code>主从第一次同步</code></h3><p><strong>多个 Redis 实例</strong>相互之间就可以通过 <code>replicaof</code>（Redis 5.0 之前使用 <code>slaveof</code>）命令形成主库和从库的关系，之后会按照<strong>三个阶段</strong>完成数据的<strong>第一次同步。</strong></p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">replicaof 172.16.19.3 6379</span><br></pre></td></tr></table></figure>
+
+<p><mark>第一次同步</mark></p>
+<p><img src="/redis_COAIX/tmp8F1A.png" alt="tmp8F1A"></p>
+<ol>
+<li><p>是主从库间建立连接、协商同步的过程，主要是<strong>为全量复制做准备</strong>。在这一步，<strong>从库和主库建立起连接，并告诉主库即将进行同步</strong>，主库确认回复后，主从库间就可以开始同步了。</p>
+<ul>
+<li><p><strong>psync</strong> 命令包含了<strong>主库的 runID</strong> 和<strong>复制进度 offset</strong> 两个参数</p>
+<ul>
+<li><p><strong><code>runId</code></strong>:</p>
+<p>从库和主库第一次复制时，因为<strong>不知道主库的 runID</strong>，所以<strong>将 runID 设为“？”</strong>。</p>
+</li>
+<li><p><strong><code>offset</code></strong>:</p>
+<p>第一次时设为 <strong>-1</strong>，<strong>表示第一次复制</strong>。</p>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>主库会发送FULLRESYNC:带上两个参数：<strong>主库 runID</strong> 和<strong>主库目前的复制进度 offset</strong>，<strong>返回给从库</strong>。</p>
+<blockquote>
+<p><strong>主库执行 bgsave 命令，生成 RDB 文件，接着将文件发给从库。从库接收到RDB 文件后，会先清空当前数据库，然后加载 RDB 文件。</strong></p>
+</blockquote>
+<ul>
+<li>FULLRESYNC 响应表示**<code>第一次复制采用的全量复制</code>**，也就是说，主库会把当前所有的数据都复制给从库。</li>
+<li><strong>从库收到数据后,清空当前数据库(可能保存了别的数据)，在本地完成数据加载</strong>。这个过程依赖于<strong>内存快照生成的 RDB 文件。</strong></li>
+</ul>
+<p><strong>在主库将数据同步给从库的过程中，主库不会被阻塞</strong>，仍然可以正常接收请求</p>
+<p>为了保证主从库的数据一致性，主库会在内存中用专门的 **<mark>replication buffer</mark>**，记录RDB 文件生成后收到的所有写操作。</p>
+<p>第一同步完成之后，之后都是使用这个**<mark>replication buffer</mark><strong>进行</strong>主库传送数从库**</p>
+</li>
+<li><p>主库会把**第二阶段执行过程中<code>新收到的写命令</code>**，再发送给从库。</p>
+<p>具体的操作是，**<code>当主库完成 RDB 文件发送后</code>**，就会把此时 **<mark>replication buffer</mark>**中的修改操作发给从库，从库再重新执行这些操作。这样一来，主从库就实现同步了。</p>
+</li>
+</ol>
+<blockquote>
+<p><strong><code>一旦主从库完成了全量复制，它们之间就会一直维护一个网络连接，主库会通过这个连接将后续陆续收到的命令操作再同步给从库，这个过程也称为基于长连接的命令传播，可以避免频繁建立连接的开销。</code></strong></p>
+</blockquote>
+<h2 id="主从级联分担全量复制时候主库的压力"><a href="#主从级联分担全量复制时候主库的压力" class="headerlink" title="主从级联分担全量复制时候主库的压力"></a><code>主从级联</code>分担<code>全量复制</code>时候<code>主库</code>的压力</h2><blockquote>
+<p><strong>如果从库数量很多，主库对于每个从库都要fork出一个子进程，压力很大</strong></p>
+</blockquote>
+<p><strong>“主 - 从 - 从”模式</strong></p>
+<p><img src="/redis_COAIX/tmp2896.png" alt="tmp2896"></p>
+<h2 id="主从库间网络断了"><a href="#主从库间网络断了" class="headerlink" title="主从库间网络断了"></a>主从库间网络断了</h2><p>网络断了之后，主从库会采用增量复制的方式继续同步</p>
+<p><strong><mark>repl_backlog_buffer</mark></strong><a name="replbacklogbuffer"></a></p>
+<p><strong>repl_backlog_buffer 是一个<code>环形缓冲区</code>，主库会记录自己写到的位置，从库则会记录自己已经读到的位置。</strong></p>
+<p><img src="/redis_COAIX/image-20220319114423868.png" alt="image-20220319114423868"></p>
+<p>主从库连接恢复之后，从库首先会给主库发送 <strong><code>psync</code></strong> 命令（不是第一次连接了），并把自己当前的slave_repl_offset 发给主库，主库会判断自己的 master_repl_offset 和 slave_repl_offset之间的差距。</p>
+<p><strong>主库和从库之间相差的操作，在增量复制时，主库只需要把它们同步给从库，就行了。</strong></p>
+<p><img src="/redis_COAIX/tmp5874.png" alt="tmp5874"></p>
+<p><strong>环形缓冲区风险</strong></p>
+<p>因为 repl_backlog_buffer 是一个**<code>环形缓冲区</code><strong>，所以在</strong><code>缓冲区写满后</code><strong>，主库会继续写入，此时，就会覆盖掉之前写入的操作。如果从库的读取速度比较慢，就有可能导致从库还未读取的操作被</strong><code>主库新写的操作覆盖</code><strong>了，</strong><code>这会导致主从库间的数据不一致。</code>**</p>
+<blockquote>
+<p>解决办法：增大缓冲区…repl_backlog_size</p>
+</blockquote>
+<h2 id="主从之间会场产生的问题"><a href="#主从之间会场产生的问题" class="headerlink" title="主从之间会场产生的问题"></a>主从之间会场产生的问题</h2><h3 id="主从数据不一致"><a href="#主从数据不一致" class="headerlink" title="主从数据不一致"></a>主从数据不一致</h3><p>客户端从从库中读取到的值和主库中的<strong>最新值并不一致</strong>。</p>
+<p>因为**<code>主从库间的命令复制是异步进行的，从库有可能会滞后执行同步命令</code>**</p>
+<p>原因</p>
+<ul>
+<li><strong>网络阻塞</strong></li>
+<li>从库及时收到了主库的命令，但是，也可能会因为正在<strong>处理其它复杂度高的命令</strong>（例如集合操作命令）而阻塞</li>
+</ul>
+<h3 id="读到过期的数据"><a href="#读到过期的数据" class="headerlink" title="读到过期的数据"></a>读到过期的数据<a name="zhucongbuyizhi"></a></h3><p><a href="#guoqishujuchuli"><strong>:point_right:<code>跳转 -&gt; Redis删除过期数据采用策略</code></strong></a></p>
+<p>跟**<code>命令</code>**有关</p>
+<p><strong>EXPIRE</strong> 和 <strong>PEXPIRE</strong>：它们给数据设置的是<strong>从命令执行时开始计算的存活时间</strong></p>
+<p><strong>EXPIREAT</strong> 和 <strong>PEXPIREAT</strong>：它们会直接把数据的<strong>过期时间设置为<code>具体的一个时间点</code></strong></p>
+<p><strong><code>因为EXPIRE是再当前时间基础上加存活时间</code><strong>，收到了一条 <strong>EXPIRE</strong> 命令，</strong>主库会直接执行这条命令</strong>。这条命令会在全量同步完成后，发给从库执行。而<strong>从库在执行时，就会在当前时间的基础上加上数据的存活时间</strong>，这样一来，<strong>从库上数据的过期时间就会比主库上延后了。</strong></p>
+<p><img src="/redis_COAIX/image-20220319190628144.png" alt="image-20220319190628144"></p>
+<h2 id="脑裂"><a href="#脑裂" class="headerlink" title="脑裂"></a>脑裂</h2><blockquote>
+<p>数据丢失</p>
+</blockquote>
+<p><strong>概念：主从集群中，同时有两个主节点，它们都能接收写请求。而脑裂最直接的影响，就是客户端不知道应该往哪个主节点写入数据，结果就是不同的客户端会往不同的主节点上写入数据。而且，严重的话，脑裂会进一步导致数据丢失。</strong></p>
+<p><strong><code>哨兵切换完成后，客户端会和新主库进行通信，发送请求操作。但是，在切换过程中，既然客户端仍然和原主库通信，这就表明，原主库并没有真的发生故障（例如主库进程挂掉），主库是由于某些原因无法处理请求，也没有响应哨兵的心跳，才被哨兵错误地判断为客观下线的。结果，在被判断下线之后，原主库又重新开始处理请求了，而此时，哨兵还没有完成主从切换，客户端仍然可以和原主库通信，客户端发送的写操作就会在原主库上写入数据了。</code></strong></p>
+<p><strong>为什么会数据丢失？</strong></p>
+<p>主从切换后，从库一旦升级为新主库，**<code>哨兵就会让原主库执行 slave of 命令</code><strong>，</strong>和新主库重新进行全量同步<strong>。而在全量同步执行的最后阶段，</strong>原主库需要<code>清空本地的数据</code><strong>，加载新主库发送的 RDB 文件，这样一来，</strong>原主库在主从切换期间保存的新写数据就丢失**。</p>
+<p><img src="/redis_COAIX/image-20220319192409135.png" alt="image-20220319192409135"></p>
+<p><strong><mark>解决方法</mark></strong></p>
+<p>Redis 已经提供了<strong>两个配置项来限制主库的请求处理</strong>，分别是 <strong>minslaves-to-write</strong> 和 <strong>min-slaves-max-lag。</strong></p>
+<p>把 min-slaves-to-write 和 min-slaves-max-lag 这两个配置项搭配起来使用，分别给它们设置一定的阈值，假设为 N 和 T。这两个配置项组合后的要求是，<strong>主库连接的从库中至少有 N 个从库</strong>，<strong>和主库进行数据复制时的 ACK 消息延迟不能超过 T 秒，否则，主库就不会再接收客户端的请求了。</strong></p>
+<p><strong>即使原主库是假故障，它在假故障期间也无法响应哨兵心跳，也不能和从库进行同步，自然也就无法和从库进行 ACK 确认了。</strong>这样一来，<strong>min-slaves-to-write</strong> 和 <strong>min-slavesmax-lag</strong> 的<strong>组合要求</strong>就无法得到满足，<strong>原主库就会被限制接收客户端请求，客户端也就不能在原主库中写入新数据了。</strong></p>
+<p><strong>等到新主库上线时，就只有新主库能接收和处理客户端请求，此时，新写的数据会被直接写到新主库中。</strong>而原主库会被**<code>哨兵降为从库</code>**，即使它的数据被清空了，也不会有新数据丢失。</p>
+<blockquote>
+<p>假设我们将 min-slaves-to-write 设置为 1，把 min-slaves-max-lag 设置为 12s，把哨兵的 down-after-illiseconds 设置为 10s，主库因为某些原因卡住了 15s，导致哨兵判断主库客观下线，开始进行主从切换。同时，因为原主库卡住了 15s，没有一个从库能和原主库在 12s 内进行数据复制，原主库也无法接收客户端请求了。这样一来，主从切换完成后，也只有新主库能接收请求，不会发生脑裂，也就不会发生数据丢失的问题了。</p>
+</blockquote>
+<hr>
+<h1 id="哨兵机制"><a href="#哨兵机制" class="headerlink" title="哨兵机制"></a>哨兵机制</h1><p><img src="/redis_COAIX/image-20220319115957142.png" alt="image-20220319115957142"></p>
+<p>运行在<strong>特殊模式下的 Redis 进程</strong>，主从库实例运行的同时，它也在运行。哨兵主要负责的就是三个任务：**<code>监控、选主（选择主库）和通知。</code>**</p>
+<p><img src="/redis_COAIX/tmpA5C6.png" alt="tmpA5C6"></p>
+<ol>
+<li>周期性地给所有的主从库发送 **<code>PING 命令</code>**，检测它们是否仍然在线运行。如果从库没有在规定时间内响应哨兵的 PING 命令，哨兵就会把它标记为“下线状态”；同样，如果主库也没有在规定时间内响应哨兵的 PING 命令，哨兵就会判定主库下线，然后开始自动切换主库的流程。</li>
+<li>主库挂了以后，哨兵就需要从很多个从库里，按照一定的规则选择一个从库实例，把它作为新的主库。这一步完成后，现在的集群<br>里就有了新主库。</li>
+<li>哨兵会把新主库的连接信息发给其他从库，让它们执行 <code>replicaof</code> 命令，和新主库建立连接，并进行数据复制。同时，<strong>哨兵会把新主库的连接信息通知给客户端，让它们把请求操作发到新主库上。</strong></li>
+</ol>
+<h2 id="主观下线，客观下线"><a href="#主观下线，客观下线" class="headerlink" title="主观下线，客观下线"></a>主观下线，客观下线</h2><p>哨兵也是集群，自己认为主库挂了，是主观下线，从别人那里收到主库挂了是客观下线。</p>
+<p>判断主库是否下线，**<code>少数服从多数</code>**</p>
+<p><img src="/redis_COAIX/tmp53E5.png" alt="tmp53E5"></p>
+<h2 id="如何选定新主库"><a href="#如何选定新主库" class="headerlink" title="如何选定新主库"></a>如何选定新主库</h2><p>先按照**<code>一定的筛选条件</code><strong>，把不符合条件的从库去掉。然后，我们再按照</strong><code>一定的规则</code>**打分选择</p>
+<ul>
+<li><p>筛选</p>
+<ul>
+<li>总是断连的不要，断连次数超过阈值<code>down-after-milliseconds * 10</code>的不要，这种库网络状况不好</li>
+</ul>
+</li>
+<li><p>规则</p>
+<ul>
+<li>优先级最高的从库得分高</li>
+<li>和旧主库同步程度最接近的从库得分高，通过<code>repl_backlog_buffer</code>环形缓冲区</li>
+<li>ID 号小的从库得分高</li>
+</ul>
+</li>
+</ul>
+<h2 id="哨兵直接通信"><a href="#哨兵直接通信" class="headerlink" title="哨兵直接通信"></a>哨兵直接通信</h2><blockquote>
+<p>Redis 提供的 <strong><code>pub/sub</code></strong> 机制，也就是**<code>发布 / 订阅</code>**</p>
+</blockquote>
+<p>在主从集群中，主库上有一个名为**<code>“sentinel:hello”</code><strong>的频道，</strong><code>不同哨兵就是通过它来相互发现，实现互相通信的</code>**。</p>
+<p><img src="/redis_COAIX/tmpFF92.png" alt="tmpFF92"></p>
+<p><strong>通过INFO命令得知从库的IP和端口</strong></p>
+<p><img src="/redis_COAIX/image-20220319120535235.png" alt="image-20220319120535235"></p>
+<h2 id="选择哪个库进行主从切换和通知"><a href="#选择哪个库进行主从切换和通知" class="headerlink" title="选择哪个库进行主从切换和通知"></a>选择哪个库进行主从切换和通知</h2><p>哨兵判断主库下线之后会给自己投一票，让别的哨兵给自己投票，每个哨兵只有一票，如果有多个哨兵同时请求别人给自己投票，投出去一张之后不会再投，超过半数就选定</p>
+<p>如果这一轮没有产生Leader，<strong>这轮投票就不会产生 Leader</strong>。**<code>哨兵集群会等待一段时间（也就是哨兵故障转移超时时间的 2 倍）</code><strong>，再重新选举。这是因为，</strong><code>哨兵集群能够进行成功投票，很大程度上依赖于选举命令的正常网络传播</code>**。如果网络压力较大或有短时堵塞，就可能导致没有一个哨兵能拿到半数以上的赞成票。所以，等到网络拥塞好转之后，再进行投票选举，成功的概率就会增加。</p>
+<p><strong>如果哨兵集群只有 2 个实例，此时，一个哨兵要想成为 Leader，必须获得2 票，而不是 1 票。所以，如果有个哨兵挂掉了，那么，此时的集群是无法进行主从库切换的。因此，通常我们至少会配置 3 个哨兵实例</strong></p>
+<h1 id="切片集群"><a href="#切片集群" class="headerlink" title="切片集群"></a>切片集群</h1><p><img src="/redis_COAIX/image-20220319121056403.png" alt="image-20220319121056403"></p>
+<h2 id="Redis-Cluster方案"><a href="#Redis-Cluster方案" class="headerlink" title="Redis Cluster方案"></a>Redis Cluster方案</h2><p>Redis Cluster 方案采用<strong>哈希槽</strong>（Hash Slot，接下来我会直接称之为 Slot），来处理<strong>数据和实例之间的映射关系</strong>。在 Redis Cluster 方案中，一个切片集群共有 <strong><code>16384</code><strong>个哈希槽，这些哈希槽类似于数据分区，</strong><code>每个键值对都会根据它的 key，被映射到一个哈希槽中。</code></strong></p>
+<p><strong><code>CRC16(key)&amp;16384 哈希槽个数</code></strong></p>
+<p><img src="/redis_COAIX/tmpEFD1.png" alt="tmpEFD1"></p>
+<p><strong>客户端和集群实例建立连接后，实例就会把<code>哈希槽的分配信息发给客户端</code></strong></p>
+<p><strong>客户端收到哈希槽信息后，会把<code>哈希槽信息缓存在本地</code>。当客户端请求键值对时，<code>会先计算键所对应的哈希槽</code>，然后就可以给相应的实例发送请求了。</strong></p>
+<p>哈希槽的位置会产生变化</p>
+<ul>
+<li>在集群中，**<code>实例有新增或删除</code><strong>，Redis 需要</strong>重新分配哈希槽**</li>
+<li>为了**<code>负载均衡</code><strong>，Redis 需要把哈希槽</strong>在所有实例上重新分布一遍**。</li>
+</ul>
+<h2 id="重定向机制"><a href="#重定向机制" class="headerlink" title="重定向机制"></a>重定向机制</h2><p><strong>这个实例上并没有相应的数据，这个实例会给客户端返回下面的 MOVED  命令响应结果，这个结果中就包含了<code>新实例的访问地址</code>。<code>同时客户端会更新该Slot的新位置</code>。</strong></p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">GET hello:key</span><br><span class="line">(error) MOVED 13320 172.16.19.5:6379</span><br></pre></td></tr></table></figure>
+
+<p><img src="/redis_COAIX/image-20220319140354503.png" alt="image-20220319140354503"></p>
+<p><strong>如果这个时候该哈希槽的数据正在迁移中，会收到实例返回的ASK命令，表示数据正在迁移中，会把新的Slot实例位置发送给客户端，<code>但是这种情况下客户端不会改变Slot跟实例的映射关系</code></strong></p>
+<h1 id="分布式锁"><a href="#分布式锁" class="headerlink" title="分布式锁"></a>分布式锁</h1><p><strong><mark>SET</mark></strong></p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>EX</td>
+<td>设置键的过期时间为second 秒</td>
+</tr>
+<tr>
+<td>PX</td>
+<td>设置键的过期时间为millisecond 毫秒</td>
+</tr>
+<tr>
+<td>NX</td>
+<td>只在键不存在时，才对键进行设置操作,效果等同于**<code>SETEX</code>**</td>
+</tr>
+</tbody></table>
+<p><strong>分布式锁流程</strong></p>
+<p><strong><code>setnx失败会返回null</code></strong></p>
+<p>设置<strong>过期时间</strong>，可以<strong>防止锁无法释放</strong></p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SET lock_key unique_value NX PX 10000</span><br></pre></td></tr></table></figure>
+
+<p><img src="/redis_COAIX/image-20220319175118926.png" alt="image-20220319175118926"></p>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link"
+		data-enable="false"
+        data-ae="false"
+        data-ci=""
+        data-cs=""
+        data-r=""
+        data-o=""
+        data-a=""
+        data-d="false"
+    >查看评论</div>
+
+
+    </div>
+    
+</div>
+
+
+    </div>
+</div>
+</body>
+
+
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/typed.js"></script>
+<script src="/js/diaspora.js"></script>
+
+
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+
+
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+</html>

@@ -1,0 +1,374 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mysql主备相关 - COAIX</title>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate" />
+    <meta name="keywords" content="COAIX,"> 
+    <meta name="description" content="求知若饥，虚心若愚,主备一致一般来说，备库**只有read only没有写权限比较好，将一些写入的放到主库中，将一些分析的和读**的放到备库中去执行，可以提高数据库的并发度，同时也可以避免切换逻辑中出现双写，造成主备不,"> 
+    <meta name="author" content="COAIX"> 
+    <link rel="alternative" href="atom.xml" title="COAIX" type="application/atom+xml"> 
+    <link rel="icon" href="/img/favicon.png"> 
+    
+    
+    
+    <meta name="twitter:card" content="summary"/>
+    <meta name="twitter:title" content="Mysql主备相关 - COAIX"/>
+    <meta name="twitter:description" content="求知若饥，虚心若愚,主备一致一般来说，备库**只有read only没有写权限比较好，将一些写入的放到主库中，将一些分析的和读**的放到备库中去执行，可以提高数据库的并发度，同时也可以避免切换逻辑中出现双写，造成主备不,"/>
+    
+    
+    
+    
+    <meta property="og:site_name" content="COAIX"/>
+    <meta property="og:type" content="object"/>
+    <meta property="og:title" content="Mysql主备相关 - COAIX"/>
+    <meta property="og:description" content="求知若饥，虚心若愚,主备一致一般来说，备库**只有read only没有写权限比较好，将一些写入的放到主库中，将一些分析的和读**的放到备库中去执行，可以提高数据库的并发度，同时也可以避免切换逻辑中出现双写，造成主备不,"/>
+    
+<link rel="stylesheet" href="/css/diaspora.css">
+
+<meta name="generator" content="Hexo 6.1.0"></head>
+
+<body class="loading">
+    <span id="config-title" style="display:none">COAIX</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="iconfont icon-home image-icon" href="javascript:;" data-url="http://coaix.cloud"></a>
+    <div title="播放/暂停" class="iconfont icon-play"></div>
+    <h3 class="subtitle">Mysql主备相关</h3>
+    <div class="social">
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="iconfont icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class='main'>
+        <h1 class="title">Mysql主备相关</h1>
+        <div class="stuff">
+            <span>六月 16, 2021</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <h1 id="主备一致"><a href="#主备一致" class="headerlink" title="主备一致"></a>主备一致<a name="主备一致"></a></h1><p>一般来说，备库**<code>只有read only</code><strong>没有写权限比较好，将一些</strong>写<strong>入的放到主库中，将一些</strong>分析的和读**的放到备库中去执行，可以提高数据库的并发度，同时也可以避免切换逻辑中出现双写，造成主备不一致，read only也可以用来区分主备数据库</p>
+<p>但是备库需要更新，用<strong>super权限的用户</strong>去完成同步更新</p>
+<h2 id="主备复制流程"><a href="#主备复制流程" class="headerlink" title="主备复制流程"></a><strong>主备复制流程</strong></h2><p><img src="https://static001.geekbang.org/resource/image/a6/a3/a66c154c1bc51e071dd2cc8c1d6ca6a3.png" alt="img"></p>
+<p><strong>备库 B 跟主库 A 之间维持了一个长连接</strong>。主库 A 内部有一个线程，专门用于服务备库 B 的这个长连接。一个事务日志同步的完整过程是这样的：</p>
+<ol>
+<li><p>在备库 B 上通过 change master 命令，设置主库 A 的 <code>IP、端口、用户名、密码，以及要从哪个位置开始请求 binlog，这个位置包含文件名和日志偏移量</code>。</p>
+</li>
+<li><p>在备库 B 上执行 start slave 命令，这时候备库会启动两个线程，就是图中的 <strong>io_thread</strong> 和 <strong>sql_thread</strong>。其中 <strong>io_thread</strong> 负责与主库建立<strong>连接</strong>。</p>
+</li>
+<li><p>主库 A 校验完用户名、密码后，开始按照备库 B 传过来的位置，从<strong>本地读取 binlog</strong>，发给 B。</p>
+</li>
+<li><p>备库 B 拿到 <strong>binlog</strong> 后，写到本地文件，称为中转日志（<strong>relay log</strong>）。</p>
+</li>
+<li><p>sql_thread 读取中转日志，解析出日志里的命令，并执行。</p>
+</li>
+</ol>
+<blockquote>
+<ol>
+<li>设置需要同步的数据库的ip，端口，用户，密码，从哪个位置开始同步</li>
+<li>备库开启io和sql thread</li>
+<li>主库读取binlog发送到备库</li>
+<li>备库收到后称之为relay log</li>
+<li>sql thread读取relay log执行</li>
+</ol>
+</blockquote>
+<h2 id="避免循环复制"><a href="#避免循环复制" class="headerlink" title="避免循环复制"></a>避免循环复制</h2><p><img src="/Mysql45/image-20220320211013203.png" alt="image-20220320211013203"></p>
+<p>如果是双M结构，业务逻辑在节点A上更新了一条语句，然后再把生成的binlog 发给节点B，节点B执行完这条更新语句后也会生成binlog。（我建议你把参数log_slave_updates设置为on，表示备库执行relay log后生成binlog）。那么，如果节点A同时是节点B的备库，相当于又把节点B新生成的binlog拿过来执行了一次，然后节点A和B间，会不断地循环执行这个更新语句，也就是循环复制了。</p>
+<p>MySQL在binlog中记录了这个命令第一次执行时所在实例的server id，如果接受到的是自己生成的日志，直接丢弃这个日志</p>
+<h2 id="备库并行复制策略"><a href="#备库并行复制策略" class="headerlink" title="备库并行复制策略"></a>备库并行复制策略</h2><p><img src="/Mysql45/image-20220320212959061.png" alt="image-20220320212959061"></p>
+<p>为什么需要有并行复制策略？为什么需要并行呢？<strong>主要是为了解决主备延迟，主数据库修改数据后binlog会传输到备数据去执行，当中会产生延迟，而延迟的主要时间就是io thread获取到之后和sql thread执行完的延迟，为了提高sql thread，将原本的单线程复制改成多线程并行复制，达到跟主库逼近的数据写入效果(主库写入是可以多事务并发执行的)</strong></p>
+<img src="https://static001.geekbang.org/resource/image/bc/45/bcf75aa3b0f496699fd7885426bc6245.png" alt="img" style="zoom:67%;" />
+
+<blockquote>
+<p><strong>coordinator</strong> 就是 <strong>sql_thread</strong>, 负责读取中转日志和分发事务。**<code>真正更新日志的 是 worker 线程</code>**。而 work 线程的个数，就是由参数 <strong>slave_parallel_workers</strong>（8~16最好） 决定的。</p>
+</blockquote>
+<p><strong>基本原则，也是并行策略的根本：</strong></p>
+<blockquote>
+<p><strong>coordinator</strong> 在<strong>分发</strong>的时候，需要满足以下这两个基本要求：</p>
+<ul>
+<li><strong>不能造成更新覆盖</strong>。这就要求<strong>更新同一行的两个事务，必须被分发到同一个 worker 中。</strong></li>
+<li><strong>同一个事务不能被拆开</strong>，必须放到同一个 worker 中。</li>
+</ul>
+</blockquote>
+<p><strong>Mysql5.5</strong></p>
+<p><strong><mark>按表分发</mark></strong></p>
+<blockquote>
+<p>如果两个事务更新不同的表，那么他们就可以并行，如果有跨表的话，还是需要放在一起考虑，也就是一个worker中</p>
+</blockquote>
+<ol>
+<li><p>如果跟所有worker都不冲突，coordinator线程就会把这个事务分配给最空闲的woker;</p>
+</li>
+<li><p>如果跟多于一个worker冲突，coordinator线程就进入等待状态，直到和这个事务存在冲突关<br>系的worker只剩下1个；</p>
+</li>
+<li><p>如果只跟一个worker冲突，coordinator线程就会把这个事务分配给这个存在冲突关系的<br>worker。</p>
+</li>
+</ol>
+<p><strong><mark>按行分发</mark></strong></p>
+<p><strong>Mysql5.6：按库并行</strong></p>
+<blockquote>
+<p>决定分发策略的hash表里，key就是数据库名，不要求binlog格式为row，statement也可以，因为sql语句很容易获得库名</p>
+</blockquote>
+<p><strong>MariaDB</strong></p>
+<p>redo log 组提交 (<strong>group commit</strong>) 优化， 而 MariaDB 的并行复制策略利用的就是这个特性：</p>
+<p>1.能够在一个组里提交的事务，肯定不会修改同一行</p>
+<p>2.主库上可以并行执行的事务，在备库上也可以并行执行</p>
+<blockquote>
+<p>实现方式：</p>
+<p>1.将<strong>一组一起提交的事务</strong>赋予同一个<strong>commit_id</strong>，下一组就是++</p>
+<p>2.<strong>commit_id</strong>直接写入<strong>binlog</strong>里面</p>
+<p>3.传到备库，如果<strong>commit_id</strong>相同，可以分配到不同的<strong>worker</strong>执行</p>
+<p>4.等到上一组相同的<strong>commit_id</strong>的组执行完，<strong>coordinator</strong>才能去取下一组到<strong>worker</strong>中去执行</p>
+</blockquote>
+<p><strong>Mysql5.7</strong></p>
+<p>只要能够到达redo log prepare阶段，就表示事务已经通过锁冲突的检验了。经过重重考验的不存在冲突的事务了，可以直接提交了</p>
+<p>1.同时处于prepare状态的事务，在备库执行的时候是可以并行的</p>
+<p>2.处于prepare和处于commit状态的事务之间，也是可以并行的</p>
+<blockquote>
+<p>**[prepare,commit]**是可以并行的</p>
+</blockquote>
+<p><img src="/Mysql45/image-20220320214453578.png" alt="image-20220320214453578"></p>
+<h1 id="主备切换"><a href="#主备切换" class="headerlink" title="主备切换"></a>主备切换</h1><h2 id="一主多从切换策略"><a href="#一主多从切换策略" class="headerlink" title="一主多从切换策略"></a><strong>一主多从切换策略</strong></h2><p><img src="/Mysql45/image-20220320225057392.png" alt="image-20220320225057392"></p>
+<blockquote>
+<p>以A出问题了，主库从A库变成了A‘库为例    </p>
+</blockquote>
+<p>当一主多从的时候有两种方式</p>
+<p><strong>一种是基于位点的主备切换</strong></p>
+<hr>
+<p>​    <strong><code>从库</code>执行change master命令将其<code>主库切换成A&#39;库</code><strong>，这个</strong><code>命令</code><strong>要经过</strong>验证</strong>阶段(将**<code>ip，端口，user，password，位置(文件名，日志偏移量)</code>**)传输给A’库。</p>
+<p>​    但是这个<strong>日志偏移量</strong>是很难确定的，因为本来记录的是A库的位点，此时换成A’库了就不能再用之前的位点了，<strong>因为主备同步的时候主备复制是并行的，相同的日志可能位点是不一样的</strong>，这个时候从库就先要找到<strong>切换后主库</strong>的**<code>新同步位点</code><strong>，考虑到不能丢失数据，所以往往都是找</strong><code>稍微靠前的一个节点</code>**然后再通过判断跳过那些B已经执行过的事务。</p>
+<p><strong>具体步骤</strong>如下：</p>
+<blockquote>
+<p>主要就是要找到原主库的故障时刻传输的文件在新主库中的位点,作为其他备库的验证阶段的请求位置</p>
+</blockquote>
+<ol>
+<li>新主库把现有的<strong>relay log</strong>全部执行完之后（同步完）</li>
+<li>A’上执行<code>show master statue</code>命令，得到A’上最新的<strong>File</strong>和<strong>Position</strong>(位点) &lt;- 这个就是验证的时候要传输的位置的两个参数</li>
+<li>取原主库故障时刻T</li>
+<li>用mysqlbinlog工具解析A’的File，得到**<code>T时刻的位点</code>**</li>
+</ol>
+<p><strong><code>但是切换的时候可能会产生错误</code></strong></p>
+<blockquote>
+<p>假设在 T 这个时刻，主库 A 已经执行完成了一个 insert 语句插入了一行数据 R，并且已经将 binlog 传给了 A’和 B，然后在传完的瞬间主库 A 的主机就掉电了。那么，这时候系统的状态是这样的：</p>
+<p>在从库 <strong>B</strong> 上，由于同步了 <strong>binlog</strong>， R 这一行<strong>已经存在</strong>；</p>
+<p>在新主库 <strong>A’</strong>上， <strong>R</strong> 这一行也已经存在，日志是写在 123 这个位置之后的；</p>
+<p>我们在从库 B 上执行 change master 命令，指向 A’的 File 文件的 123 位置，就会把插入 R 这一行数据的 binlog 又同步到从库 B 去执行。</p>
+</blockquote>
+<p>**<code>解决方法</code>**是：</p>
+<ol>
+<li>主动跳过一个事务<code>start slave</code></li>
+<li>设置跳过指定错误<code>slave_skip_errors</code>为“1032，1062”</li>
+</ol>
+<p>​    <strong>GTID</strong></p>
+<hr>
+<p>​    Mysql5.6只有引入的一种新方式，为了解决之前那种slave_skip_errors 1032,1062这种困难的方式</p>
+<p><strong>GTID：全局事务ID，一个事务提交的时候生成，是这个事务的唯一标识，一个GTID就可以指明一个事务</strong></p>
+<p><strong>GTID</strong>:{</p>
+<p>​    <strong><mark>server_uuid</mark><strong>：</strong>标识一个数据库</strong>，一个实例第一次启动的时候自动生成，是一个<strong>全局唯一的值</strong></p>
+<p>​    <strong><mark>gno</mark><strong>：</strong>标识一个事务</strong>，是一个整数，初始值是1，每次提交事务的时候分配个这个事务，并+1</p>
+<p>}</p>
+<p><strong>GTID</strong>&#x3D;<code>server_uuid</code>:<code>gno</code></p>
+<p>transaction_id和gno区别：t_id是事务执行就会产生的一个id，会自增，所以就算产生了回滚，但是还是自增了，gno的话是事务提交的时候才产生的，也会自增，gno是代表执行成功的事务</p>
+<p><strong>每个 MySQL 实例都维护了一个 GTID 集合，用来对应“这个实例执行过的所有事务”。Set集</strong></p>
+<blockquote>
+<p>如果出现主键冲突则提交一个GTID相同的空事务，这样执行的时候就会跳过这个主键冲突的的事务</p>
+</blockquote>
+<p><strong>基于GTID的主备切换</strong></p>
+<p><img src="/Mysql45/image-20220320230630269.png" alt="image-20220320230630269"></p>
+<p><img src="/Mysql45/image-20220320230754256.png" alt="image-20220320230754256"></p>
+<h2 id="一主从主备切换策略"><a href="#一主从主备切换策略" class="headerlink" title="一主从主备切换策略"></a>一主从主备切换策略</h2><blockquote>
+<p>由于<strong>主备延迟</strong>的存在，所以在<strong>主备切换</strong>的时候，就相应的有不同的策略。</p>
+</blockquote>
+<p><img src="/Mysql45/image-20220308223105778.png" alt="image-20220308223105778"></p>
+<blockquote>
+<p><strong>等到没延迟再传，让主库只读不能写，开始切换，切换完之后换主库</strong></p>
+</blockquote>
+<p><img src="/Mysql45/tmp4A9D.png" alt="tmp4A9D"></p>
+<p><strong>可用性优先策略</strong></p>
+<blockquote>
+<p><strong>不等主备数据同步，直接把连接切到备库 B，并且让备库 B 可以读写，那么系统几乎就没有不可用时间了，传期间主库新的写到binlog中后续传给对方</strong></p>
+</blockquote>
+<p>tip: binlog设置成row格式更容易发生问题，比如自增主键，statement mixed不会记录，可能并行写的时候造成切换前后数据不一致</p>
+<p><img src="/Mysql45/image-20220320212452496.png" alt="image-20220320212452496"></p>
+<h1 id="主备导致的读写分离坑"><a href="#主备导致的读写分离坑" class="headerlink" title="主备导致的读写分离坑"></a>主备导致的读写分离坑</h1><p>一旦有了<strong>主备</strong>，就会产生<code>主备延迟</code>，一般<strong>主用来写，从用来读</strong>。</p>
+<h2 id="读写分离的基本结构"><a href="#读写分离的基本结构" class="headerlink" title="读写分离的基本结构"></a><strong>读写分离的基本结构</strong></h2><p><strong><mark>双M + MS</mark></strong></p>
+<p><strong><code>A和A&#39;互为主备，双M结构，这样A一旦宕机，A&#39;会成为主库</code></strong></p>
+<p><img src="/Mysql45/image-20220320224239944.png" alt="image-20220320224239944"></p>
+<p><strong><code> 客户端直连 &amp; 采用Proxy</code></strong></p>
+<ol>
+<li>第一种<strong>客户端直连的方案</strong>，可以采用zookeeper，将服务器节点动态保存在zookeeper种，完成动态上下线或者动态选择访问哪个数据库，缺点是如果需要主备切换，数据迁移的时候，都需要到zookeeper中调整连接信息，没有zookeeper就要到cilent中更改连接信息</li>
+<li>第二种方案用的是<strong>proxy</strong>，对后端技术有比较大的要求，要能有高可用架构，现在主流趋势都是用proxy</li>
+</ol>
+<p><img src="/Mysql45/image-20220320224338378.png" alt="image-20220320224338378"></p>
+<h2 id="过期读"><a href="#过期读" class="headerlink" title="过期读"></a>过期读</h2><p>无论是那种方案，都会产生<code>过期读</code></p>
+<blockquote>
+<p>过期读：主库更新了，从库还没有更新，cilent从从库上读取消息，这就是读取到了过期的消息，成为过期读</p>
+</blockquote>
+<h3 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a><strong><mark>解决方案</mark></strong></h3><ol>
+<li>强制走主库</li>
+<li>sleep方案</li>
+<li>判断主备无延迟方案</li>
+<li>配合semi—sync方案</li>
+<li>等<strong>主库位点</strong>方案</li>
+<li>等<strong>GTID</strong>方案</li>
+</ol>
+<h3 id="强制走主库"><a href="#强制走主库" class="headerlink" title="强制走主库"></a><strong>强制走主库</strong></h3><blockquote>
+<p><strong>如果十分有必要读取到最新的数据的就需要强制走主库</strong>，比如付款之后余额，看结算页面</p>
+<p>如果是没有必要拿到最新消息的可以走从库，比如访问商品页面，可以没有那么必要及时，可以走从库</p>
+</blockquote>
+<h3 id="sleep方案"><a href="#sleep方案" class="headerlink" title="sleep方案"></a><strong>sleep方案</strong></h3><blockquote>
+<p>大多数情况下<strong>主备延迟时间在1秒以内</strong>，所以做一个<strong>sleep</strong>可以很大概率拿到最新的数据，等了这一秒可能就更新完成了</p>
+<p>场景：商家发布一个商品，axios异步发送请求，前端页面直接显示添加成功，等卖家再刷新页面查的时候都已经主备都执行完了</p>
+</blockquote>
+<h3 id="判断主备无延迟方案"><a href="#判断主备无延迟方案" class="headerlink" title="判断主备无延迟方案"></a><strong>判断主备无延迟方案</strong></h3><p><code>seconds_behind_master</code>表示主备延迟时间</p>
+<ol>
+<li>每次判断主备延迟时间是否为0，如为0才能进行查询请求，如果还不等于0就等</li>
+<li>对比位点判断是否主备无延迟，如果位点都一样当然无延迟了</li>
+<li>对比GTID判断主备是否无延迟，也就是判断Gtid_set是否一致<code>但凡用位点的都可以用GTID</code></li>
+</ol>
+<h3 id="配合semi—sync方案"><a href="#配合semi—sync方案" class="headerlink" title="配合semi—sync方案"></a><strong>配合semi—sync方案</strong></h3><p>在这之前看一下kafka的生产者ack机制</p>
+<p><img src="/Mysql45/tmp3710.png" alt="tmp3710"></p>
+<p><code>semi-sync</code>跟这个<strong>很像</strong>：</p>
+<ol>
+<li>事务提交-&gt;主库把binlog发送给从库</li>
+<li>从库收到binlog，发送给主库ack，表示收到了</li>
+<li>主库收到这个ack以后返回给客户端<code>事务完成</code></li>
+</ol>
+<blockquote>
+<p>在<code>一主多从</code>当中，一旦有一个从库发送了ack，那么就会给客户端返回<code>事务完成</code>的确认</p>
+<ol>
+<li>无法保证哪一个从库更新完成了</li>
+<li>查询到别的从库上，就还是会产生过期读的问题</li>
+</ol>
+</blockquote>
+<p>场景：</p>
+<ol>
+<li>高峰期，可能位点总是对不上，产生读延迟很久</li>
+<li>很多时候，我们并不需要保证<code>主备完全同步</code>，因为很多时候事务成组提交，而查询是在组其中之一完成之后查询的，那么就没必要等到后面的事务也执行完，后面的事务执行的结果属于预期结果了</li>
+</ol>
+<h3 id="等主库位点方案"><a href="#等主库位点方案" class="headerlink" title="等主库位点方案"></a><strong>等主库位点方案</strong></h3><p><code>SELECT master_pos_wait(file,pos[,timeout]);</code></p>
+<ol>
+<li>在从库执行</li>
+<li>file和pos指的是主库上的文件名和位置</li>
+<li>timeout可选，设置为正整数N表示这个函数最多等待N秒</li>
+</ol>
+<img src="Mysql45/6578a7ada10b4031d9660aec3989b14.png" alt="6578a7ada10b4031d9660aec3989b14" style="zoom:67%;" />
+
+<h3 id="等GTID方案"><a href="#等GTID方案" class="headerlink" title="等GTID方案"></a><strong>等GTID方案</strong></h3><img src="Mysql45/7ecbd34764751644e560b16946fcf7e.png" alt="7ecbd34764751644e560b16946fcf7e" style="zoom: 67%;" />
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link"
+		data-enable="false"
+        data-ae="false"
+        data-ci=""
+        data-cs=""
+        data-r=""
+        data-o=""
+        data-a=""
+        data-d="false"
+    >查看评论</div>
+
+
+    </div>
+    
+</div>
+
+
+    </div>
+</div>
+</body>
+
+
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/typed.js"></script>
+<script src="/js/diaspora.js"></script>
+
+
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+
+
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+</html>

@@ -1,0 +1,228 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Redis的事务？ - COAIX</title>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate" />
+    <meta name="keywords" content="COAIX,"> 
+    <meta name="description" content="求知若饥，虚心若愚,事务
+严格说不算事务，但是具有部分特性
+
+
+原子性 
+
+命令入队时就报错，会放弃事务执行，保证原子性；
+命令入队时没报错，实际执行时报错，不保证原子性；
+EXEC 命令执行时实例故障，如果开启了 A,"> 
+    <meta name="author" content="COAIX"> 
+    <link rel="alternative" href="atom.xml" title="COAIX" type="application/atom+xml"> 
+    <link rel="icon" href="/img/favicon.png"> 
+    
+    
+    
+    <meta name="twitter:card" content="summary"/>
+    <meta name="twitter:title" content="Redis的事务？ - COAIX"/>
+    <meta name="twitter:description" content="求知若饥，虚心若愚,事务
+严格说不算事务，但是具有部分特性
+
+
+原子性 
+
+命令入队时就报错，会放弃事务执行，保证原子性；
+命令入队时没报错，实际执行时报错，不保证原子性；
+EXEC 命令执行时实例故障，如果开启了 A,"/>
+    
+    
+    
+    
+    <meta property="og:site_name" content="COAIX"/>
+    <meta property="og:type" content="object"/>
+    <meta property="og:title" content="Redis的事务？ - COAIX"/>
+    <meta property="og:description" content="求知若饥，虚心若愚,事务
+严格说不算事务，但是具有部分特性
+
+
+原子性 
+
+命令入队时就报错，会放弃事务执行，保证原子性；
+命令入队时没报错，实际执行时报错，不保证原子性；
+EXEC 命令执行时实例故障，如果开启了 A,"/>
+    
+<link rel="stylesheet" href="/css/diaspora.css">
+
+<meta name="generator" content="Hexo 6.1.0"></head>
+
+<body class="loading">
+    <span id="config-title" style="display:none">COAIX</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="iconfont icon-home image-icon" href="javascript:;" data-url="http://coaix.cloud"></a>
+    <div title="播放/暂停" class="iconfont icon-play"></div>
+    <h3 class="subtitle">Redis的事务？</h3>
+    <div class="social">
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="iconfont icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class='main'>
+        <h1 class="title">Redis的事务？</h1>
+        <div class="stuff">
+            <span>七月 16, 2021</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <h1 id="事务"><a href="#事务" class="headerlink" title="事务"></a>事务</h1><blockquote>
+<p>严格说不算事务，但是具有部分特性</p>
+</blockquote>
+<p><img src="/redis_COAIX/image-20220319180216835.png" alt="image-20220319180216835"></p>
+<p><strong><mark>原子性</mark></strong> </p>
+<ul>
+<li>命令入队时就报错，会放弃事务执行，保证原子性；</li>
+<li>命令入队时没报错，实际执行时报错，不保证原子性；</li>
+<li>EXEC 命令执行时实例故障，如果开启了 AOF 日志，可以保证原子性。(需要执行AOF修复)</li>
+</ul>
+<p><strong><mark>一致性</mark></strong></p>
+<ul>
+<li>命令入队时就报错<br><strong>事务本身就会被放弃执行，所以可以保证数据库的一致性。</strong></li>
+<li>命令入队时没报错，实际执行时报错<br><strong>有错误的命令不会被执行，正确的命令可以正常执行，也不会改变数据库的一致性。</strong></li>
+<li>EXEC 命令执行时实例发生故障<ul>
+<li>没开AOF，RDB持久化，出故障了数据不会保存，是一致的(跟程序员心中想的一样)</li>
+<li>使用了 RDB 快照，因为 <strong>RDB 快照不会在事务执行时执行</strong>，所以，<strong>事务命令操作的结果不会被保存到 RDB 快照中</strong>，使用 <strong>RDB 快照进行恢复时，数据库里的数据也是一致的</strong>。</li>
+<li>使用 AOF 日志<ul>
+<li>事务操作还没有被记录到 AOF 日志时，实例就发生了故障，那么，使用 AOF 日志恢复的数据库数据是一致的。</li>
+<li>如果只有部分操作被记录到了AOF 日志，我们可以使用 <strong><code>redis-check-aof</code></strong> 清除事务中已经完成的操作，数据库恢复后也是一致的。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p><strong><mark>隔离性</mark></strong></p>
+<ul>
+<li><strong><code>并发操作在 EXEC 命令前执行</code><strong>，此时，</strong>隔离性的保证要使用 WATCH 机制来实现</strong>，<strong>否则隔离性无法保证</strong></li>
+<li><strong><code>并发操作在 EXEC 命令后执行</code><strong>，此时，</strong>隔离性可以保证</strong></li>
+</ul>
+<p><strong><mark>持久性</mark></strong></p>
+<p>不管 Redis 采用什么<strong>持久化模式</strong>，事务的持久性属性是得不到保证的。</p>
+<ul>
+<li>如果 Redis <strong>没有使用 RDB 或 AOF</strong>，那么事务的持久化属性肯定得不到保证。</li>
+<li>如果 Redis <strong>使用了 RDB 模式</strong>，那么，在一个事务执行后，而下一次的 RDB 快照还未执行前，如果发<br>生了实例宕机，这种情况下，事务修改的数据也是不能保证持久化的。</li>
+<li>如果 Redis <strong>采用了 AOF 模式</strong>，因为 AOF 模式的三种配置选项 no、everysec 和 always<br>都会存在数据丢失的情况，所以，事务的持久性属性也还是得不到保证。</li>
+</ul>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link"
+		data-enable="false"
+        data-ae="false"
+        data-ci=""
+        data-cs=""
+        data-r=""
+        data-o=""
+        data-a=""
+        data-d="false"
+    >查看评论</div>
+
+
+    </div>
+    
+</div>
+
+
+    </div>
+</div>
+</body>
+
+
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/typed.js"></script>
+<script src="/js/diaspora.js"></script>
+
+
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+
+
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+</html>

@@ -1,0 +1,512 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Thread Local - COAIX</title>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate" />
+    <meta name="keywords" content="COAIX,"> 
+    <meta name="description" content="求知若饥，虚心若愚,ThreadLocal全面解析学习目标
+
+了解ThreadLocal的介绍
+掌握ThreadLocal的运用场景
+了解ThreadLocal的内部结构
+了解ThreadLocal的核心方法源码
+了解,"> 
+    <meta name="author" content="COAIX"> 
+    <link rel="alternative" href="atom.xml" title="COAIX" type="application/atom+xml"> 
+    <link rel="icon" href="/img/favicon.png"> 
+    
+    
+    
+    <meta name="twitter:card" content="summary"/>
+    <meta name="twitter:title" content="Thread Local - COAIX"/>
+    <meta name="twitter:description" content="求知若饥，虚心若愚,ThreadLocal全面解析学习目标
+
+了解ThreadLocal的介绍
+掌握ThreadLocal的运用场景
+了解ThreadLocal的内部结构
+了解ThreadLocal的核心方法源码
+了解,"/>
+    
+    
+    
+    
+    <meta property="og:site_name" content="COAIX"/>
+    <meta property="og:type" content="object"/>
+    <meta property="og:title" content="Thread Local - COAIX"/>
+    <meta property="og:description" content="求知若饥，虚心若愚,ThreadLocal全面解析学习目标
+
+了解ThreadLocal的介绍
+掌握ThreadLocal的运用场景
+了解ThreadLocal的内部结构
+了解ThreadLocal的核心方法源码
+了解,"/>
+    
+<link rel="stylesheet" href="/css/diaspora.css">
+
+<meta name="generator" content="Hexo 6.1.0"></head>
+
+<body class="loading">
+    <span id="config-title" style="display:none">COAIX</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="iconfont icon-home image-icon" href="javascript:;" data-url="http://coaix.cloud"></a>
+    <div title="播放/暂停" class="iconfont icon-play"></div>
+    <h3 class="subtitle">Thread Local</h3>
+    <div class="social">
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="iconfont icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class='main'>
+        <h1 class="title">Thread Local</h1>
+        <div class="stuff">
+            <span>一月 16, 2022</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <h1 id="ThreadLocal全面解析"><a href="#ThreadLocal全面解析" class="headerlink" title="ThreadLocal全面解析"></a>ThreadLocal全面解析</h1><p><strong>学习目标</strong></p>
+<ul>
+<li><strong>了解ThreadLocal的介绍</strong></li>
+<li><strong>掌握ThreadLocal的运用场景</strong></li>
+<li><strong>了解ThreadLocal的内部结构</strong></li>
+<li><strong>了解ThreadLocal的核心方法源码</strong></li>
+<li><strong>了解ThreadLocalMap的源码</strong></li>
+</ul>
+<h2 id="1-ThreadLocal介绍"><a href="#1-ThreadLocal介绍" class="headerlink" title="1. ThreadLocal介绍"></a>1. ThreadLocal介绍</h2><h3 id="1-1-官方介绍"><a href="#1-1-官方介绍" class="headerlink" title="1.1 官方介绍"></a>1.1 官方介绍</h3><p> 从Java官方文档中的描述：<strong>ThreadLocal类用来提供线程内部的局部变量</strong>。这种变量在多线程环境下访问（通过get和set方法访问）时能保证各个线程的变量相对独立于其他线程内的变量。ThreadLocal实例通常来说都是private static类型的，用于关联线程和线程上下文。</p>
+<p>我们可以得知 ThreadLocal 的作用是：提供线程内的局部变量，不同的线程之间不会相互干扰，这种变量在线程的生命周期内起作用，减少同一个线程内多个函数或组件之间一些公共变量传递的复杂度。</p>
+<blockquote>
+<p>总结:</p>
+<ol>
+<li>线程并发: 在多线程并发的场景下</li>
+<li>传递数据: 我们可以通过ThreadLocal在同一线程，不同组件中传递公共变量</li>
+<li>线程隔离: 每个线程的变量都是独立的，不会互相影响</li>
+</ol>
+</blockquote>
+<h3 id="1-2-基本使用"><a href="#1-2-基本使用" class="headerlink" title="1.2 基本使用"></a>1.2 基本使用</h3><h4 id="1-2-1-常用方法"><a href="#1-2-1-常用方法" class="headerlink" title="1.2.1 常用方法"></a>1.2.1 常用方法</h4><p> 在使用之前,我们先来认识几个ThreadLocal的常用方法</p>
+<table>
+<thead>
+<tr>
+<th>方法声明</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>ThreadLocal()</td>
+<td>创建ThreadLocal对象</td>
+</tr>
+<tr>
+<td>public void set( T value)</td>
+<td>设置当前线程绑定的局部变量</td>
+</tr>
+<tr>
+<td>public T get()</td>
+<td>获取当前线程绑定的局部变量</td>
+</tr>
+<tr>
+<td>public void remove()</td>
+<td>移除当前线程绑定的局部变量</td>
+</tr>
+</tbody></table>
+<h4 id="1-2-2-使用案例"><a href="#1-2-2-使用案例" class="headerlink" title="1.2.2 使用案例"></a>1.2.2 使用案例</h4><p>我们来看下面这个案例 , 感受一下ThreadLocal 线程隔离的特点：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">MyDemo</span> &#123;</span><br><span class="line">    <span class="keyword">private</span> String content;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> String <span class="title function_">getContent</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> content;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">void</span> <span class="title function_">setContent</span><span class="params">(String content)</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>.content = content;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> &#123;</span><br><span class="line">        <span class="type">MyDemo</span> <span class="variable">demo</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">MyDemo</span>();</span><br><span class="line">        <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; <span class="number">5</span>; i++) &#123;</span><br><span class="line">            <span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(<span class="keyword">new</span> <span class="title class_">Runnable</span>() &#123;</span><br><span class="line">                <span class="meta">@Override</span></span><br><span class="line">                <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">run</span><span class="params">()</span> &#123;</span><br><span class="line">                    demo.setContent(Thread.currentThread().getName() + <span class="string">&quot;的数据&quot;</span>);</span><br><span class="line">                    System.out.println(<span class="string">&quot;-----------------------&quot;</span>);</span><br><span class="line">             		System.out.println(Thread.currentThread().getName() + <span class="string">&quot;---&gt;&quot;</span> + demo.getContent());</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;);</span><br><span class="line">            thread.setName(<span class="string">&quot;线程&quot;</span> + i);</span><br><span class="line">            thread.start();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>打印结果:<br><img src="https://img-blog.csdnimg.cn/20210123210723278.png" alt="在这里插入图片描述"><br>​ 从结果可以看出多个线程在访问同一个变量的时候出现的异常，线程间的数据没有隔离。下面我们来看下采用 ThreadLocal 的方式来解决这个问题的例子。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">MyDemo1</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> ThreadLocal&lt;String&gt; tl = <span class="keyword">new</span> <span class="title class_">ThreadLocal</span>&lt;&gt;();<span class="comment">//每个线程一份</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> String content; <span class="comment">//同一个对象的content在不同线程中是共享变量</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> String <span class="title function_">getContent</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> tl.get();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">void</span> <span class="title function_">setContent</span><span class="params">(String content)</span> &#123;</span><br><span class="line">         tl.set(content);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> &#123;</span><br><span class="line">        <span class="type">MyDemo</span> <span class="variable">demo</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">MyDemo</span>();</span><br><span class="line">        <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; <span class="number">5</span>; i++) &#123;</span><br><span class="line">            <span class="type">Thread</span> <span class="variable">thread</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(<span class="keyword">new</span> <span class="title class_">Runnable</span>() &#123;</span><br><span class="line">                <span class="meta">@Override</span></span><br><span class="line">                <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">run</span><span class="params">()</span> &#123;</span><br><span class="line">                    demo.setContent(Thread.currentThread().getName() + <span class="string">&quot;的数据&quot;</span>);</span><br><span class="line">                    System.out.println(<span class="string">&quot;-----------------------&quot;</span>);</span><br><span class="line">                    System.out.println(Thread.currentThread().getName() + <span class="string">&quot;---&gt;&quot;</span> + demo.getContent());</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;);</span><br><span class="line">            thread.setName(<span class="string">&quot;线程&quot;</span> + i);</span><br><span class="line">            thread.start();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>打印结果:<br><img src="https://img-blog.csdnimg.cn/20210123210812106.png" alt="在这里插入图片描述"><br>从结果来看，这样很好的解决了多线程之间数据隔离的问题，十分方便。</p>
+<h3 id="1-3-ThreadLocal类与synchronized关键字"><a href="#1-3-ThreadLocal类与synchronized关键字" class="headerlink" title="1.3 ThreadLocal类与synchronized关键字"></a>1.3 ThreadLocal类与synchronized关键字</h3><h4 id="1-3-1-synchronized同步方式"><a href="#1-3-1-synchronized同步方式" class="headerlink" title="1.3.1 synchronized同步方式"></a>1.3.1 synchronized同步方式</h4><p> 这里可能会觉得在上述例子中我们完全可以通过加锁来实现这个功能。我们首先来看一下用synchronized代码块实现的效果:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Demo02</span> &#123;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">private</span> String content;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> String <span class="title function_">getContent</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> content;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">setContent</span><span class="params">(String content)</span> &#123;</span><br><span class="line">        <span class="built_in">this</span>.content = content;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> &#123;</span><br><span class="line">        <span class="type">Demo02</span> <span class="variable">demo02</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Demo02</span>();</span><br><span class="line">        </span><br><span class="line">        <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; <span class="number">5</span>; i++) &#123;</span><br><span class="line">            <span class="type">Thread</span> <span class="variable">t</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>()&#123;</span><br><span class="line">                <span class="meta">@Override</span></span><br><span class="line">                <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">run</span><span class="params">()</span> &#123;</span><br><span class="line">                    <span class="keyword">synchronized</span> (Demo02.class)&#123;</span><br><span class="line">                        demo02.setContent(Thread.currentThread().getName() + <span class="string">&quot;的数据&quot;</span>);</span><br><span class="line">                        System.out.println(<span class="string">&quot;-------------------------------------&quot;</span>);</span><br><span class="line">                        <span class="type">String</span> <span class="variable">content</span> <span class="operator">=</span> demo02.getContent();</span><br><span class="line">                        System.out.println(Thread.currentThread().getName() + <span class="string">&quot;---&gt;&quot;</span> + content);</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;;</span><br><span class="line">            t.setName(<span class="string">&quot;线程&quot;</span> + i);</span><br><span class="line">            t.start();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>打印结果:<br><img src="https://img-blog.csdnimg.cn/20210123210856358.png" alt="在这里插入图片描述"><br>​ 从结果可以发现, 加锁确实可以解决这个问题，但是在这里我们强调的是线程数据隔离的问题，并不是多线程共享数据的问题, 在这个案例中使用synchronized关键字是不合适的。</p>
+<h4 id="1-3-2-ThreadLocal与synchronized的区别"><a href="#1-3-2-ThreadLocal与synchronized的区别" class="headerlink" title="1.3.2 ThreadLocal与synchronized的区别"></a>1.3.2 ThreadLocal与synchronized的区别</h4><p> 虽然ThreadLocal模式与synchronized关键字都用于处理多线程并发访问变量的问题, 不过两者处理问题的角度和思路不同。</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>synchronized</th>
+<th>ThreadLocal</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>原理</td>
+<td>同步机制采用’以时间换空间’的方式, 只提供了一份变量,让不同的线程排队访问</td>
+<td>ThreadLocal采用’以空间换时间’的方式, 为每一个线程都提供了一份变量的副本,从而实现同时访问而相不干扰</td>
+</tr>
+<tr>
+<td>侧重点</td>
+<td>多个线程之间访问资源的同步</td>
+<td>多线程中让每个线程之间的数据相互隔离</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>总结：<br>在刚刚的案例中，虽然使用ThreadLocal和synchronized都能解决问题,但是使用ThreadLocal更为合适,因为这样可以使程序拥有更高的并发性。</p>
+</blockquote>
+<h2 id="2-运用场景-事务案例"><a href="#2-运用场景-事务案例" class="headerlink" title="2. 运用场景_事务案例"></a>2. 运用场景_事务案例</h2><p> 通过以上的介绍，我们已经基本了解ThreadLocal的特点。但是它具体是运用在什么场景中呢？ 接下来让我们看一个案例： 事务操作。</p>
+<h3 id="2-1-转账案例"><a href="#2-1-转账案例" class="headerlink" title="2.1 转账案例"></a>2.1 转账案例</h3><h4 id="2-1-1-场景构建"><a href="#2-1-1-场景构建" class="headerlink" title="2.1.1 场景构建"></a>2.1.1 场景构建</h4><p> 这里我们先构建一个简单的转账场景： 有一个数据表account，里面有两个用户Jack和Rose，用户Jack 给用户Rose 转账。</p>
+<p> 案例的实现主要用mysql数据库，JDBC 和 C3P0 框架。以下是详细代码 ：</p>
+<p> （1） 项目结构<br><img src="https://img-blog.csdnimg.cn/20210123211111323.png" alt="在这里插入图片描述"><br>​ （2） 数据准备<br><img src="https://img-blog.csdnimg.cn/20210123211717292.png" alt="在这里插入图片描述"><br>（3） dao层代码 ： AccountDao</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">AccountDao</span> &#123;</span><br><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">out</span><span class="params">(String outUser, <span class="type">int</span> money)</span> <span class="keyword">throws</span> SQLException &#123;</span><br><span class="line">    <span class="type">String</span> <span class="variable">sql</span> <span class="operator">=</span> <span class="string">&quot;update account set money = money - ? where name = ?&quot;</span>;</span><br><span class="line"></span><br><span class="line">    <span class="type">Connection</span> <span class="variable">conn</span> <span class="operator">=</span> JdbcUtils.getConnection();</span><br><span class="line">    <span class="type">PreparedStatement</span> <span class="variable">pstm</span> <span class="operator">=</span> conn.prepareStatement(sql);</span><br><span class="line">    pstm.setInt(<span class="number">1</span>,money);</span><br><span class="line">    pstm.setString(<span class="number">2</span>,outUser);</span><br><span class="line">    pstm.executeUpdate();</span><br><span class="line"></span><br><span class="line">    JdbcUtils.release(pstm,conn);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">in</span><span class="params">(String inUser, <span class="type">int</span> money)</span> <span class="keyword">throws</span> SQLException &#123;</span><br><span class="line">    <span class="type">String</span> <span class="variable">sql</span> <span class="operator">=</span> <span class="string">&quot;update account set money = money + ? where name = ?&quot;</span>;</span><br><span class="line"></span><br><span class="line">    <span class="type">Connection</span> <span class="variable">conn</span> <span class="operator">=</span> JdbcUtils.getConnection();</span><br><span class="line">    <span class="type">PreparedStatement</span> <span class="variable">pstm</span> <span class="operator">=</span> conn.prepareStatement(sql);</span><br><span class="line">    pstm.setInt(<span class="number">1</span>,money);</span><br><span class="line">    pstm.setString(<span class="number">2</span>,inUser);</span><br><span class="line">    pstm.executeUpdate();</span><br><span class="line"></span><br><span class="line">    JdbcUtils.release(pstm,conn);</span><br><span class="line">&#125;</span><br><span class="line">&#125; </span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>（4） service层代码 ： AccountService</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">AccountService</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">transfer</span><span class="params">(String outUser, String inUser, <span class="type">int</span> money)</span> &#123;</span><br><span class="line">        <span class="type">AccountDao</span> <span class="variable">ad</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">AccountDao</span>();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="comment">// 转出</span></span><br><span class="line">            ad.out(outUser, money);</span><br><span class="line">            <span class="comment">// 转入</span></span><br><span class="line">            ad.in(inUser, money);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>（5） 工具类 ： JdbcUtils</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">JdbcUtils</span> &#123; </span><br><span class="line"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">commitAndClose</span><span class="params">(Connection conn)</span> &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="keyword">if</span>(conn != <span class="literal">null</span>)&#123;</span><br><span class="line">            <span class="comment">//提交事务</span></span><br><span class="line">            conn.commit();</span><br><span class="line">            <span class="comment">//释放连接</span></span><br><span class="line">            conn.close();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">catch</span> (SQLException e) &#123;</span><br><span class="line">        e.printStackTrace();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">rollbackAndClose</span><span class="params">(Connection conn)</span> &#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="keyword">if</span>(conn != <span class="literal">null</span>)&#123;</span><br><span class="line">            <span class="comment">//回滚事务</span></span><br><span class="line">            conn.rollback();</span><br><span class="line">            <span class="comment">//释放连接</span></span><br><span class="line">            conn.close();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">catch</span> (SQLException e) &#123;</span><br><span class="line">        e.printStackTrace();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">&#125; </span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h4 id="2-1-2-引入事务"><a href="#2-1-2-引入事务" class="headerlink" title="2.1.2 引入事务"></a><a target="_blank" rel="noopener" href="https://blog.csdn.net/weixin_44050144/article/details/113061884"></a>2.1.2 引入事务</h4><p> 案例中的转账涉及两个DML操作： 一个转出，一个转入。这些操作是需要具备原子性的，不可分割。不然就有可能出现数据修改异常情况。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">AccountService</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">transfer</span><span class="params">(String outUser, String inUser, <span class="type">int</span> money)</span> &#123;</span><br><span class="line">        <span class="type">AccountDao</span> <span class="variable">ad</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">AccountDao</span>();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="comment">// 转出</span></span><br><span class="line">            ad.out(outUser, money);</span><br><span class="line">            <span class="comment">// 模拟转账过程中的异常</span></span><br><span class="line">            <span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">1</span>/<span class="number">0</span>;</span><br><span class="line">            <span class="comment">// 转入</span></span><br><span class="line">            ad.in(inUser, money);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p> 所以这里就需要操作事务，来保证转出和转入操作具备原子性，要么同时成功，要么同时失败。</p>
+<p>（1） JDBC中关于事务的操作的api</p>
+<table>
+<thead>
+<tr>
+<th>Connection接口的方法</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>void setAutoCommit(false)</td>
+<td>禁用事务自动提交（改为手动）</td>
+</tr>
+<tr>
+<td>void commit();</td>
+<td>提交事务</td>
+</tr>
+<tr>
+<td>void rollback();</td>
+<td>回滚事务</td>
+</tr>
+</tbody></table>
+<p><strong>（2） 开启事务的注意点:</strong></p>
+<ul>
+<li><p>为了保证所有的操作在一个事务中,案例中使用的连接必须是同一个: service层开启事务的connection需要跟dao层访问数据库的connection保持一致</p>
+</li>
+<li><p>线程并发情况下, 每个线程只能操作各自的 connection</p>
+</li>
+</ul>
+<h3 id="2-2-常规解决方案"><a href="#2-2-常规解决方案" class="headerlink" title="2.2 常规解决方案"></a>2.2 常规解决方案</h3><h4 id="2-2-1-常规方案的实现"><a href="#2-2-1-常规方案的实现" class="headerlink" title="2.2.1 常规方案的实现"></a>2.2.1 常规方案的实现</h4><p>基于上面给出的前提， 大家通常想到的解决方案是 ：</p>
+<ul>
+<li>传参: 从service层将connection对象向dao层传递</li>
+<li>加锁</li>
+</ul>
+<p>以下是代码实现修改的部分：</p>
+<p> （1 ) AccountService 类</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">AccountService</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">transfer</span><span class="params">(String outUser, String inUser, <span class="type">int</span> money)</span> &#123;</span><br><span class="line">        <span class="type">AccountDao</span> <span class="variable">ad</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">AccountDao</span>();</span><br><span class="line">        <span class="comment">//线程并发情况下,为了保证每个线程使用各自的connection,故加锁</span></span><br><span class="line">        <span class="keyword">synchronized</span> (AccountService.class) &#123;</span><br><span class="line"></span><br><span class="line">            <span class="type">Connection</span> <span class="variable">conn</span> <span class="operator">=</span> <span class="literal">null</span>;</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                conn = JdbcUtils.getConnection();</span><br><span class="line">                <span class="comment">//开启事务</span></span><br><span class="line">                conn.setAutoCommit(<span class="literal">false</span>);</span><br><span class="line">                <span class="comment">// 转出</span></span><br><span class="line">                ad.out(conn, outUser, money);</span><br><span class="line">                <span class="comment">// 模拟转账过程中的异常</span></span><br><span class="line"><span class="comment">//            int i = 1/0;</span></span><br><span class="line">                <span class="comment">// 转入</span></span><br><span class="line">                ad.in(conn, inUser, money);</span><br><span class="line">                <span class="comment">//事务提交</span></span><br><span class="line">                JdbcUtils.commitAndClose(conn);</span><br><span class="line">            &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">                e.printStackTrace();</span><br><span class="line">                <span class="comment">//事务回滚</span></span><br><span class="line">                JdbcUtils.rollbackAndClose(conn);</span><br><span class="line">                <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p> （2) AccountDao 类 （这里需要注意的是： connection不能在dao层释放，要在service层，不然在dao层释放，service层就无法使用了）</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">AccountDao</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">out</span><span class="params">(Connection conn, String outUser, <span class="type">int</span> money)</span> <span class="keyword">throws</span> SQLException&#123;</span><br><span class="line">        <span class="type">String</span> <span class="variable">sql</span> <span class="operator">=</span> <span class="string">&quot;update account set money = money - ? where name = ?&quot;</span>;</span><br><span class="line">        <span class="comment">//注释从连接池获取连接的代码,使用从service中传递过来的connection</span></span><br><span class="line"><span class="comment">//        Connection conn = JdbcUtils.getConnection();</span></span><br><span class="line">        <span class="type">PreparedStatement</span> <span class="variable">pstm</span> <span class="operator">=</span> conn.prepareStatement(sql);</span><br><span class="line">        pstm.setInt(<span class="number">1</span>,money);</span><br><span class="line">        pstm.setString(<span class="number">2</span>,outUser);</span><br><span class="line">        pstm.executeUpdate();</span><br><span class="line">        <span class="comment">//连接不能在这里释放,service层中还需要使用</span></span><br><span class="line"><span class="comment">//        JdbcUtils.release(pstm,conn);</span></span><br><span class="line">        JdbcUtils.release(pstm);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">in</span><span class="params">(Connection conn, String inUser, <span class="type">int</span> money)</span> <span class="keyword">throws</span> SQLException &#123;</span><br><span class="line">        <span class="type">String</span> <span class="variable">sql</span> <span class="operator">=</span> <span class="string">&quot;update account set money = money + ? where name = ?&quot;</span>;</span><br><span class="line"><span class="comment">//        Connection conn = JdbcUtils.getConnection();</span></span><br><span class="line">        <span class="type">PreparedStatement</span> <span class="variable">pstm</span> <span class="operator">=</span> conn.prepareStatement(sql);</span><br><span class="line">        pstm.setInt(<span class="number">1</span>,money);</span><br><span class="line">        pstm.setString(<span class="number">2</span>,inUser);</span><br><span class="line">        pstm.executeUpdate();</span><br><span class="line"><span class="comment">//        JdbcUtils.release(pstm,conn);</span></span><br><span class="line">        JdbcUtils.release(pstm);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h4 id="2-2-2-常规方案的弊端"><a href="#2-2-2-常规方案的弊端" class="headerlink" title="2.2.2 常规方案的弊端"></a>2.2.2 常规方案的弊端</h4><p>上述方式我们看到的确按要求解决了问题，但是仔细观察，会发现这样实现的弊端：</p>
+<ol>
+<li><p>直接从service层传递connection到dao层, 造成代码耦合度提高</p>
+</li>
+<li><p>加锁会造成线程失去并发性，程序性能降低</p>
+</li>
+</ol>
+<h3 id="2-3-ThreadLocal解决方案"><a href="#2-3-ThreadLocal解决方案" class="headerlink" title="2.3 ThreadLocal解决方案"></a>2.3 ThreadLocal解决方案</h3><h4 id="2-3-1-ThreadLocal方案的实现"><a href="#2-3-1-ThreadLocal方案的实现" class="headerlink" title="2.3.1 ThreadLocal方案的实现"></a>2.3.1 ThreadLocal方案的实现</h4><p>像这种需要在项目中进行<strong>数据传递</strong>和<strong>线程隔离</strong>的场景，我们不妨用ThreadLocal来解决：</p>
+<p> （1） 工具类的修改： 加入ThreadLocal</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">JdbcUtils</span> &#123;</span><br><span class="line">    <span class="comment">//ThreadLocal对象 : 将connection绑定在当前线程中</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> ThreadLocal&lt;Connection&gt; tl = <span class="keyword">new</span> <span class="title class_">ThreadLocal</span>();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// c3p0 数据库连接池对象属性</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">ComboPooledDataSource</span> <span class="variable">ds</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ComboPooledDataSource</span>();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 获取连接</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> Connection <span class="title function_">getConnection</span><span class="params">()</span> <span class="keyword">throws</span> SQLException &#123;</span><br><span class="line">        <span class="comment">//取出当前线程绑定的connection对象</span></span><br><span class="line">        <span class="type">Connection</span> <span class="variable">conn</span> <span class="operator">=</span> tl.get();</span><br><span class="line">        <span class="keyword">if</span> (conn == <span class="literal">null</span>) &#123;</span><br><span class="line">            <span class="comment">//如果没有，则从连接池中取出</span></span><br><span class="line">            conn = ds.getConnection();</span><br><span class="line">            <span class="comment">//再将connection对象绑定到当前线程中</span></span><br><span class="line">            tl.set(conn);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> conn;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//释放资源</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">release</span><span class="params">(AutoCloseable... ios)</span> &#123;</span><br><span class="line">        <span class="keyword">for</span> (AutoCloseable io : ios) &#123;</span><br><span class="line">            <span class="keyword">if</span> (io != <span class="literal">null</span>) &#123;</span><br><span class="line">                <span class="keyword">try</span> &#123;</span><br><span class="line">                    io.close();</span><br><span class="line">                &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">                    e.printStackTrace();</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">commitAndClose</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="type">Connection</span> <span class="variable">conn</span> <span class="operator">=</span> getConnection();</span><br><span class="line">            <span class="comment">//提交事务</span></span><br><span class="line">            conn.commit();</span><br><span class="line">            <span class="comment">//解除绑定</span></span><br><span class="line">            tl.remove();</span><br><span class="line">            <span class="comment">//释放连接</span></span><br><span class="line">            conn.close();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (SQLException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">rollbackAndClose</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="type">Connection</span> <span class="variable">conn</span> <span class="operator">=</span> getConnection();</span><br><span class="line">            <span class="comment">//回滚事务</span></span><br><span class="line">            conn.rollback();</span><br><span class="line">            <span class="comment">//解除绑定</span></span><br><span class="line">            tl.remove();</span><br><span class="line">            <span class="comment">//释放连接</span></span><br><span class="line">            conn.close();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (SQLException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p> （2） AccountService类的修改：不需要传递connection对象</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">AccountService</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">transfer</span><span class="params">(String outUser, String inUser, <span class="type">int</span> money)</span> &#123;</span><br><span class="line">        <span class="type">AccountDao</span> <span class="variable">ad</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">AccountDao</span>();</span><br><span class="line"></span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="type">Connection</span> <span class="variable">conn</span> <span class="operator">=</span> JdbcUtils.getConnection();</span><br><span class="line">            <span class="comment">//开启事务</span></span><br><span class="line">            conn.setAutoCommit(<span class="literal">false</span>);</span><br><span class="line">            <span class="comment">// 转出 ： 这里不需要传参了 ！</span></span><br><span class="line">            ad.out(outUser, money);</span><br><span class="line">            <span class="comment">// 模拟转账过程中的异常</span></span><br><span class="line"><span class="comment">//            int i = 1 / 0;</span></span><br><span class="line">            <span class="comment">// 转入</span></span><br><span class="line">            ad.in(inUser, money);</span><br><span class="line">            <span class="comment">//事务提交</span></span><br><span class="line">            JdbcUtils.commitAndClose();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">            <span class="comment">//事务回滚</span></span><br><span class="line">           JdbcUtils.rollbackAndClose();</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p> （3） AccountDao类的修改：照常使用</p>
+<h4 id="2-3-2-ThreadLocal方案的好处"><a href="#2-3-2-ThreadLocal方案的好处" class="headerlink" title="2.3.2 ThreadLocal方案的好处"></a>2.3.2 ThreadLocal方案的好处</h4><p>从上述的案例中我们可以看到， 在一些特定场景下，ThreadLocal方案有两个突出的优势：</p>
+<ol>
+<li><p>传递数据 ： 保存每个线程绑定的数据，在需要的地方可以直接获取, 避免参数直接传递带来的代码耦合问题</p>
+</li>
+<li><p>线程隔离 ： 各线程之间的数据相互隔离却又具备并发性，避免同步方式带来的性能损失</p>
+</li>
+</ol>
+<h2 id="3-ThreadLocal的内部结构"><a href="#3-ThreadLocal的内部结构" class="headerlink" title="3. ThreadLocal的内部结构"></a>3. ThreadLocal的内部结构</h2><p> 通过以上的学习，我们对ThreadLocal的作用有了一定的认识。现在我们一起来看一下ThreadLocal的内部结构，探究它能够实现线程数据隔离的原理。</p>
+<h3 id="3-1-常见的误解"><a href="#3-1-常见的误解" class="headerlink" title="3.1 常见的误解"></a>3.1 常见的误解</h3><p> 如果我们不去看源代码的话，可能会猜测<code>ThreadLocal</code>是这样子设计的：每个<code>ThreadLocal</code>都创建一个<code>Map</code>，然后用线程作为<code>Map</code>的<code>key</code>，要存储的局部变量作为<code>Map</code>的<code>value</code>，这样就能达到各个线程的局部变量隔离的效果。这是最简单的设计方法，JDK最早期的<code>ThreadLocal</code> 确实是这样设计的，但现在早已不是了。<br><img src="https://img-blog.csdnimg.cn/20210124115504330.png" alt="在这里插入图片描述"></p>
+<blockquote>
+<p>这也是早期的<code>ThreadLocal</code>设计方式，这种方式导致每个线程的ThreadLocal都要存储所有线程的信息，造成查询效率或者空间上的浪费</p>
+</blockquote>
+<h3 id="3-2-现在的设计"><a href="#3-2-现在的设计" class="headerlink" title="3.2 现在的设计"></a>3.2 现在的设计</h3><p> 但是，JDK后面优化了设计方案，在JDK8中 <code>ThreadLocal</code>的设计是：每个<code>Thread</code>维护一个<code>ThreadLocalMap</code>，这个Map的<code>key</code>是<code>ThreadLocal</code>实例本身，<code>value</code>才是真正要存储的值<code>Object</code>。</p>
+<p>具体的过程是这样的：</p>
+<ul>
+<li><p>每个Thread线程内部都有一个Map (ThreadLocalMap)</p>
+</li>
+<li><p>Map里面存储ThreadLocal对象（key）和线程的变量副本（value）</p>
+</li>
+<li><p>Thread内部的Map是由ThreadLocal维护的，由ThreadLocal负责向map获取和设置线程的变量值。</p>
+</li>
+<li><p>对于不同的线程，每次获取副本值时，别的线程并不能获取到当前线程的副本值，形成了副本的隔离，互不干扰。<br><img src="https://img-blog.csdnimg.cn/20210124120125266.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3dlaXhpbl80NDA1MDE0NA==,size_16,color_FFFFFF,t_70" alt="在这里插入图片描述"></p>
+</li>
+</ul>
+<h3 id="3-3-这样设计的好处"><a href="#3-3-这样设计的好处" class="headerlink" title="3.3 这样设计的好处"></a>3.3 这样设计的好处</h3><p> 这个设计与我们一开始说的设计刚好相反，这样设计有如下两个优势：</p>
+<ul>
+<li>这样设计之后每个<code>Map</code>存储的<code>Entry</code>数量就会变少。因为之前的存储数量由<code>Thread</code>的数量决定，现在是由<code>ThreadLocal</code>的数量决定。在实际运用当中，往往ThreadLocal的数量要少于Thread的数量。</li>
+<li>当<code>Thread</code>销毁之后，对应的<code>ThreadLocalMap</code>也会随之销毁，能<strong>减少内存的使用。</strong></li>
+</ul>
+<h2 id="4-ThreadLocal的核心方法源码"><a href="#4-ThreadLocal的核心方法源码" class="headerlink" title="4. ThreadLocal的核心方法源码"></a>4. ThreadLocal的核心方法源码</h2><p> 基于ThreadLocal的内部结构，我们继续分析它的核心方法源码，更深入的了解其操作原理。</p>
+<p>除了构造方法之外， ThreadLocal对外暴露的方法有以下4个：</p>
+<table>
+<thead>
+<tr>
+<th>方法声明</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>protected T initialValue()</td>
+<td>返回当前线程局部变量的初始值</td>
+</tr>
+<tr>
+<td>public void set( T value)</td>
+<td>设置当前线程绑定的局部变量</td>
+</tr>
+<tr>
+<td>public T get()</td>
+<td>获取当前线程绑定的局部变量</td>
+</tr>
+<tr>
+<td>public void remove()</td>
+<td>移除当前线程绑定的局部变量</td>
+</tr>
+</tbody></table>
+<p> 以下是这4个方法的详细源码分析(为了保证思路清晰, ThreadLocalMap部分暂时不展开,下一个知识点详解)</p>
+<h3 id="4-1-set方法"><a href="#4-1-set方法" class="headerlink" title="4.1 set方法"></a>4.1 set方法</h3><p><strong>（1 ) 源码和对应的中文注释</strong></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"> <span class="comment">/**</span></span><br><span class="line"><span class="comment">    * 设置当前线程对应的ThreadLocal的值</span></span><br><span class="line"><span class="comment">    *</span></span><br><span class="line"><span class="comment">    * <span class="doctag">@param</span> value 将要保存在当前线程对应的ThreadLocal的值</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">   <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">set</span><span class="params">(T value)</span> &#123;</span><br><span class="line">       <span class="comment">// 获取当前线程对象</span></span><br><span class="line">       <span class="type">Thread</span> <span class="variable">t</span> <span class="operator">=</span> Thread.currentThread();</span><br><span class="line">       <span class="comment">// 获取此线程对象中维护的ThreadLocalMap对象</span></span><br><span class="line">       <span class="type">ThreadLocalMap</span> <span class="variable">map</span> <span class="operator">=</span> getMap(t);</span><br><span class="line">       <span class="comment">// 判断map是否存在</span></span><br><span class="line">       <span class="keyword">if</span> (map != <span class="literal">null</span>)</span><br><span class="line">           <span class="comment">// 存在则调用map.set设置此实体entry</span></span><br><span class="line">           map.set(<span class="built_in">this</span>, value);</span><br><span class="line">       <span class="keyword">else</span></span><br><span class="line">           <span class="comment">// 1）当前线程Thread 不存在ThreadLocalMap对象</span></span><br><span class="line">           <span class="comment">// 2）则调用createMap进行ThreadLocalMap对象的初始化</span></span><br><span class="line">           <span class="comment">// 3）并将 t(当前线程)和value(t对应的值)作为第一个entry存放至ThreadLocalMap中</span></span><br><span class="line">           createMap(t, value);</span><br><span class="line">   &#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">    * 获取当前线程Thread对应维护的ThreadLocalMap </span></span><br><span class="line"><span class="comment">    * </span></span><br><span class="line"><span class="comment">    * <span class="doctag">@param</span>  t the current thread 当前线程</span></span><br><span class="line"><span class="comment">    * <span class="doctag">@return</span> the map 对应维护的ThreadLocalMap </span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">   ThreadLocalMap <span class="title function_">getMap</span><span class="params">(Thread t)</span> &#123;</span><br><span class="line">       <span class="keyword">return</span> t.threadLocals;</span><br><span class="line">   &#125;</span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">    *创建当前线程Thread对应维护的ThreadLocalMap </span></span><br><span class="line"><span class="comment">    *</span></span><br><span class="line"><span class="comment">    * <span class="doctag">@param</span> t 当前线程</span></span><br><span class="line"><span class="comment">    * <span class="doctag">@param</span> firstValue 存放到map中第一个entry的值</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line"><span class="keyword">void</span> <span class="title function_">createMap</span><span class="params">(Thread t, T firstValue)</span> &#123;</span><br><span class="line">       <span class="comment">//这里的this是调用此方法的threadLocal</span></span><br><span class="line">       t.threadLocals = <span class="keyword">new</span> <span class="title class_">ThreadLocalMap</span>(<span class="built_in">this</span>, firstValue);</span><br><span class="line">   &#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p><strong>（2 ) 代码执行流程</strong></p>
+<p> A. 首先获取当前线程，并根据当前线程获取一个Map</p>
+<p> B. 如果获取的Map不为空，则将参数设置到Map中（当前ThreadLocal的引用作为key）</p>
+<p> C. 如果Map为空，则给该线程创建 Map，并设置初始值</p>
+<h3 id="4-2-get方法"><a href="#4-2-get方法" class="headerlink" title="4.2 get方法"></a>4.2 get方法</h3><p><strong>（1 ) 源码和对应的中文注释</strong></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 返回当前线程中保存ThreadLocal的值</span></span><br><span class="line"><span class="comment"> * 如果当前线程没有此ThreadLocal变量，</span></span><br><span class="line"><span class="comment"> * 则它会通过调用&#123;<span class="doctag">@link</span> #initialValue&#125; 方法进行初始化值</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@return</span> 返回当前线程对应此ThreadLocal的值</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> T <span class="title function_">get</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="comment">// 获取当前·线程对象·</span></span><br><span class="line">    <span class="type">Thread</span> <span class="variable">t</span> <span class="operator">=</span> Thread.currentThread();</span><br><span class="line">    <span class="comment">// 获取此线程对象中维护的ThreadLocalMap对象</span></span><br><span class="line">    <span class="type">ThreadLocalMap</span> <span class="variable">map</span> <span class="operator">=</span> getMap(t);</span><br><span class="line">    <span class="comment">// 如果此map存在</span></span><br><span class="line">    <span class="keyword">if</span> (map != <span class="literal">null</span>) &#123;</span><br><span class="line">        <span class="comment">// 以当前的ThreadLocal 为 key，调用getEntry获取对应的存储实体e</span></span><br><span class="line">        ThreadLocalMap.<span class="type">Entry</span> <span class="variable">e</span> <span class="operator">=</span> map.getEntry(<span class="built_in">this</span>);</span><br><span class="line">        <span class="comment">// 对e进行判空 </span></span><br><span class="line">        <span class="keyword">if</span> (e != <span class="literal">null</span>) &#123;</span><br><span class="line">            <span class="meta">@SuppressWarnings(&quot;unchecked&quot;)</span></span><br><span class="line">            <span class="comment">// 获取存储实体 e 对应的 value值</span></span><br><span class="line">            <span class="comment">// 即为我们想要的当前线程对应此ThreadLocal的值</span></span><br><span class="line">            <span class="type">T</span> <span class="variable">result</span> <span class="operator">=</span> (T)e.value;</span><br><span class="line">            <span class="keyword">return</span> result;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">    	初始化 : 有两种情况有执行当前代码</span></span><br><span class="line"><span class="comment">    	第一种情况: map不存在，表示此线程没有维护的ThreadLocalMap对象</span></span><br><span class="line"><span class="comment">    	第二种情况: map存在, 但是没有与当前ThreadLocal关联的entry</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">return</span> setInitialValue();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 初始化</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@return</span> the initial value 初始化后的值</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">private</span> T <span class="title function_">setInitialValue</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="comment">// 调用initialValue获取初始化的值</span></span><br><span class="line">    <span class="comment">// 此方法可以被子类重写, 如果不重写默认返回null</span></span><br><span class="line">    <span class="type">T</span> <span class="variable">value</span> <span class="operator">=</span> initialValue();</span><br><span class="line">    <span class="comment">// 获取当前线程对象</span></span><br><span class="line">    <span class="type">Thread</span> <span class="variable">t</span> <span class="operator">=</span> Thread.currentThread();</span><br><span class="line">    <span class="comment">// 获取此线程对象中维护的ThreadLocalMap对象</span></span><br><span class="line">    <span class="type">ThreadLocalMap</span> <span class="variable">map</span> <span class="operator">=</span> getMap(t);</span><br><span class="line">    <span class="comment">// 判断map是否存在</span></span><br><span class="line">    <span class="keyword">if</span> (map != <span class="literal">null</span>)</span><br><span class="line">        <span class="comment">// 存在则调用map.set设置此实体entry</span></span><br><span class="line">        map.set(<span class="built_in">this</span>, value);</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">        <span class="comment">// 1）当前线程Thread 不存在ThreadLocalMap对象</span></span><br><span class="line">        <span class="comment">// 2）则调用createMap进行ThreadLocalMap对象的初始化</span></span><br><span class="line">        <span class="comment">// 3）并将 t(当前线程)和value(t对应的值)作为第一个entry存放至ThreadLocalMap中</span></span><br><span class="line">        createMap(t, value);</span><br><span class="line">    <span class="comment">// 返回设置的值value</span></span><br><span class="line">    <span class="keyword">return</span> value;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p><strong>（2 ) 代码执行流程</strong></p>
+<p> A. 首先获取当前线程, 根据当前线程获取一个Map</p>
+<p> B. 如果获取的Map不为空，则在Map中以ThreadLocal的引用作为key来在Map中获取对应的Entry e，否则转到D</p>
+<p> C. 如果e不为null，则返回e.value，否则转到D</p>
+<p> D. Map为空或者e为空，则通过initialValue函数获取初始值value，然后用ThreadLocal的引用和value作为firstKey和firstValue创建一个新的Map</p>
+<p>总结: <strong>先获取当前线程的 ThreadLocalMap 变量，如果存在则返回值，不存在则创建并返回初始值。</strong></p>
+<h3 id="4-3-remove方法"><a href="#4-3-remove方法" class="headerlink" title="4.3 remove方法"></a>4.3 remove方法</h3><p><strong>（1 ) 源码和对应的中文注释</strong></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">    * 删除当前线程中保存的ThreadLocal对应的实体entry</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">remove</span><span class="params">()</span> &#123;</span><br><span class="line">       <span class="comment">// 获取当前线程对象中维护的ThreadLocalMap对象</span></span><br><span class="line">        <span class="type">ThreadLocalMap</span> <span class="variable">m</span> <span class="operator">=</span> getMap(Thread.currentThread());</span><br><span class="line">       <span class="comment">// 如果此map存在</span></span><br><span class="line">        <span class="keyword">if</span> (m != <span class="literal">null</span>)</span><br><span class="line">           <span class="comment">// 存在则调用map.remove</span></span><br><span class="line">           <span class="comment">// 以当前ThreadLocal为key删除对应的实体entry</span></span><br><span class="line">            m.remove(<span class="built_in">this</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p><strong>（2 ) 代码执行流程</strong></p>
+<p> A. 首先获取当前线程，并根据当前线程获取一个Map</p>
+<p> B. 如果获取的Map不为空，则移除当前ThreadLocal对象对应的entry</p>
+<h3 id="4-4-initialValue方法"><a href="#4-4-initialValue方法" class="headerlink" title="4.4 initialValue方法"></a><strong>4.4 initialValue方法</strong></h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment">  * 返回当前线程对应的ThreadLocal的初始值</span></span><br><span class="line"><span class="comment">  </span></span><br><span class="line"><span class="comment">  * 此方法的第一次调用发生在，当线程通过get方法访问此线程的ThreadLocal值时</span></span><br><span class="line"><span class="comment">  * 除非线程先调用了set方法，在这种情况下，initialValue 才不会被这个线程调用。</span></span><br><span class="line"><span class="comment">  * 通常情况下，每个线程最多调用一次这个方法。</span></span><br><span class="line"><span class="comment">  *</span></span><br><span class="line"><span class="comment">  * &lt;p&gt;这个方法仅仅简单的返回null &#123;<span class="doctag">@code</span> null&#125;;</span></span><br><span class="line"><span class="comment">  * 如果程序员想ThreadLocal线程局部变量有一个除null以外的初始值，</span></span><br><span class="line"><span class="comment">  * 必须通过子类继承&#123;<span class="doctag">@code</span> ThreadLocal&#125; 的方式去重写此方法</span></span><br><span class="line"><span class="comment">  * 通常, 可以通过匿名内部类的方式实现</span></span><br><span class="line"><span class="comment">  *</span></span><br><span class="line"><span class="comment">  * <span class="doctag">@return</span> 当前ThreadLocal的初始值</span></span><br><span class="line"><span class="comment">  */</span></span><br><span class="line"><span class="keyword">protected</span> T <span class="title function_">initialValue</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">null</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p> 此方法的作用是 返回该线程局部变量的初始值。</p>
+<p>（1） 这个方法是一个延迟调用方法，从上面的代码我们得知，在set方法还未调用而先调用了get方法时才执行，并且仅执行1次。</p>
+<p>（2）这个方法缺省实现直接返回一个<code>null</code>。</p>
+<p>（3）如果想要一个除null之外的初始值，可以重写此方法。（备注： 该方法是一个<code>protected</code>的方法，显然是为了让子类覆盖而设计的）</p>
+<h2 id="5-ThreadLocalMap源码分析"><a href="#5-ThreadLocalMap源码分析" class="headerlink" title="5. ThreadLocalMap源码分析"></a>5. ThreadLocalMap源码分析</h2><p> 在分析ThreadLocal方法的时候，我们了解到ThreadLocal的操作实际上是围绕ThreadLocalMap展开的。ThreadLocalMap的源码相对比较复杂, 我们从以下三个方面进行讨论。</p>
+<h3 id="5-1-基本结构"><a href="#5-1-基本结构" class="headerlink" title="5.1 基本结构"></a>5.1 基本结构</h3><p> ThreadLocalMap是ThreadLocal的内部类，没有实现Map接口，用独立的方式实现了Map的功能，其内部的Entry也是独立实现。<br><img src="https://img-blog.csdnimg.cn/20210124143602480.png" alt="在这里插入图片描述"><br><strong>（1） 成员变量</strong></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 初始容量 —— 必须是2的整次幂</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">INITIAL_CAPACITY</span> <span class="operator">=</span> <span class="number">16</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 存放数据的table，Entry类的定义在下面分析</span></span><br><span class="line"><span class="comment"> * 同样，数组长度必须是2的整次幂。</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">private</span> Entry[] table;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 数组里面entrys的个数，可以用于判断table当前使用量是否超过阈值。</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">private</span> <span class="type">int</span> <span class="variable">size</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 进行扩容的阈值，表使用量大于它的时候进行扩容。</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">private</span> <span class="type">int</span> threshold; <span class="comment">// Default to 0</span></span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p> 跟HashMap类似，INITIAL_CAPACITY代表这个Map的初始容量；table 是一个Entry 类型的数组，用于存储数据；size 代表表中的存储数目； threshold 代表需要扩容时对应 size 的阈值。</p>
+<p><strong>（2） 存储结构 - Entry</strong></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * Entry继承WeakReference，并且用ThreadLocal作为key.</span></span><br><span class="line"><span class="comment"> * 如果key为null(entry.get() == null)，意味着key不再被引用，</span></span><br><span class="line"><span class="comment"> * 因此这时候entry也可以从table中清除。</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">class</span> <span class="title class_">Entry</span> <span class="keyword">extends</span> <span class="title class_">WeakReference</span>&lt;ThreadLocal&lt;?&gt;&gt; &#123;</span><br><span class="line">    <span class="comment">/** The value associated with this ThreadLocal. */</span></span><br><span class="line">    Object value;</span><br><span class="line"></span><br><span class="line">    Entry(ThreadLocal&lt;?&gt; k, Object v) &#123;</span><br><span class="line">        <span class="built_in">super</span>(k);</span><br><span class="line">        value = v;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p> 在ThreadLocalMap中，也是用Entry来保存K-V结构数据的。不过Entry中的key只能是ThreadLocal对象，这点在构造方法中已经限定死了。</p>
+<p> 另外，Entry继承WeakReference，也就是key（ThreadLocal）是弱引用，其目的是将ThreadLocal对象的生命周期和线程生命周期解绑。</p>
+<h3 id="5-2-弱引用和内存泄漏"><a href="#5-2-弱引用和内存泄漏" class="headerlink" title="5.2 弱引用和内存泄漏"></a>5.2 弱引用和内存泄漏</h3><p> 有些程序员在使用ThreadLocal的过程中会发现有内存泄漏的情况发生，就猜测这个内存泄漏跟Entry中使用了弱引用的key有关系。这个理解其实是不对的。</p>
+<p> 我们先来回顾这个问题中涉及的几个名词概念，再来分析问题。</p>
+<p><strong>（1） 内存泄漏相关概念</strong></p>
+<ul>
+<li>Memory overflow:内存溢出，没有足够的内存提供申请者使用。</li>
+<li>Memory leak: 内存泄漏是指程序中已动态分配的堆内存由于某种原因程序未释放或无法释放，造成系统内存的浪费，导致程序运行速度减慢甚至系统崩溃等严重后果。内存泄漏的堆积终将导致内存溢出。</li>
+</ul>
+<p><strong>（2） 弱引用相关概念</strong></p>
+<p> Java中的引用有4种类型： 强、软、弱、虚。当前这个问题主要涉及到强引用和弱引用：</p>
+<p> <strong>强引用（“Strong” Reference）</strong>，就是我们最常见的普通对象引用，只要还有强引用指向一个对象，就能表明对象还“活着”，垃圾回收器就不会回收这种对象。</p>
+<p> <strong>弱引用（WeakReference）</strong>，垃圾回收器一旦发现了只具有弱引用的对象，不管当前内存空间足够与否，都会回收它的内存。</p>
+<p><strong>（3） 如果key使用强引用</strong></p>
+<p> 假设ThreadLocalMap中的key使用了强引用，那么会出现内存泄漏吗？</p>
+<p> 此时ThreadLocal的内存图（实线表示强引用）如下：<br><img src="https://img-blog.csdnimg.cn/20210124144330949.png" alt="在这里插入图片描述"><br>​ 假设在业务代码中使用完ThreadLocal ，threadLocal Ref被回收了。</p>
+<p> 但是因为threadLocalMap的Entry强引用了threadLocal，造成threadLocal无法被回收。</p>
+<p> 在没有手动删除这个Entry以及CurrentThread依然运行的前提下，始终有强引用链 threadRef-&gt;currentThread-&gt;threadLocalMap-&gt;entry，Entry就不会被回收（Entry中包括了ThreadLocal实例和value），导致Entry内存泄漏。</p>
+<p> 也就是说，ThreadLocalMap中的key使用了强引用， 是无法完全避免内存泄漏的。</p>
+<p><strong>（5）如果key使用弱引用</strong></p>
+<p> 那么ThreadLocalMap中的key使用了弱引用，会出现内存泄漏吗？</p>
+<p> 此时ThreadLocal的内存图（实线表示强引用，虚线表示弱引用）如下：<br><img src="https://img-blog.csdnimg.cn/20210124144945153.png" alt="在这里插入图片描述"><br>​ 同样假设在业务代码中使用完ThreadLocal ，threadLocal Ref被回收了。</p>
+<p> 由于ThreadLocalMap只持有ThreadLocal的弱引用，没有任何强引用指向threadlocal实例, <strong>所以threadlocal就可以顺利被gc回收</strong>，此时Entry中的key&#x3D;null。</p>
+<p> 但是在没有手动删除这个Entry以及CurrentThread依然运行的前提下，也存在有强引用链 threadRef-&gt;currentThread-&gt;threadLocalMap-&gt;entry -&gt; value ，value不会被回收， 而这块value永远不会被访问到了，导致value内存泄漏。</p>
+<p> 也就是说，ThreadLocalMap中的key使用了弱引用， 也有可能内存泄漏。</p>
+<p><strong>（6）出现内存泄漏的真实原因</strong></p>
+<p> 比较以上两种情况，我们就会发现，内存泄漏的发生跟ThreadLocalMap中的key是否使用弱引用是没有关系的。那么内存泄漏的的真正原因是什么呢？</p>
+<p> 细心的同学会发现，在以上两种内存泄漏的情况中，都有两个前提：</p>
+<blockquote>
+<ol>
+<li>没有手动删除这个Entry</li>
+<li>CurrentThread依然运行</li>
+</ol>
+</blockquote>
+<p> 第一点很好理解，只要在使用完ThreadLocal，调用其remove方法删除对应的Entry，就能避免内存泄漏。</p>
+<p> 第二点稍微复杂一点， <strong>由于ThreadLocalMap是Thread的一个属性，被当前线程所引用，所以它的生命周期跟Thread一样长</strong>。那么在使用完ThreadLocal之后，如果当前Thread也随之执行结束，ThreadLocalMap自然也会被gc回收，从根源上避免了内存泄漏。</p>
+<p> 综上，<strong>ThreadLocal内存泄漏的根源是</strong>：由于ThreadLocalMap的生命周期跟Thread一样长，如果没有手动删除对应key就会导致内存泄漏。</p>
+<p><strong>（7） 为什么使用弱引用</strong></p>
+<p> 根据刚才的分析, 我们知道了： 无论ThreadLocalMap中的key使用哪种类型引用都无法完全避免内存泄漏，跟使用弱引用没有关系。</p>
+<p> 要避免内存泄漏有两种方式：</p>
+<ol>
+<li><p>使用完ThreadLocal，调用其remove方法删除对应的Entry</p>
+</li>
+<li><p>使用完ThreadLocal，当前Thread也随之运行结束</p>
+</li>
+</ol>
+<blockquote>
+<p>相对第一种方式，第二种方式显然更不好控制，特别是使用线程池的时候，线程结束是不会销毁的。</p>
+</blockquote>
+<p> 也就是说，只要记得在使用完ThreadLocal及时的调用remove，无论key是强引用还是弱引用都不会有问题。那么为什么key要用弱引用呢？</p>
+<p> 事实上，在ThreadLocalMap中的set&#x2F;getEntry方法中，会对key为null（也即是ThreadLocal为null）进行判断，如果为null的话，那么是会对value置为null的。</p>
+<p> 这就意味着使用完ThreadLocal，CurrentThread依然运行的前提下，就算忘记调用remove方法，<strong>弱引用比强引用可以多一层保障</strong>：弱引用的ThreadLocal会被回收，对应的value在下一次ThreadLocalMap调用set,get,remove中的任一方法的时候会被清除，从而避免内存泄漏。</p>
+<h3 id="5-3-hash冲突的解决"><a href="#5-3-hash冲突的解决" class="headerlink" title="5.3 hash冲突的解决"></a>5.3 hash冲突的解决</h3><p> hash冲突的解决是Map中的一个重要内容。我们以hash冲突的解决为线索，来研究一下ThreadLocalMap的核心源码。</p>
+<p><strong>（1） 首先从ThreadLocal的set() 方法入手</strong></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">set</span><span class="params">(T value)</span> &#123;</span><br><span class="line">      <span class="type">Thread</span> <span class="variable">t</span> <span class="operator">=</span> Thread.currentThread();</span><br><span class="line">      ThreadLocal.<span class="type">ThreadLocalMap</span> <span class="variable">map</span> <span class="operator">=</span> getMap(t);</span><br><span class="line">      <span class="keyword">if</span> (map != <span class="literal">null</span>)</span><br><span class="line">          <span class="comment">//调用了ThreadLocalMap的set方法</span></span><br><span class="line">          map.set(<span class="built_in">this</span>, value);</span><br><span class="line">      <span class="keyword">else</span></span><br><span class="line">          createMap(t, value);</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  ThreadLocal.ThreadLocalMap <span class="title function_">getMap</span><span class="params">(Thread t)</span> &#123;</span><br><span class="line">      <span class="keyword">return</span> t.threadLocals;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">void</span> <span class="title function_">createMap</span><span class="params">(Thread t, T firstValue)</span> &#123;</span><br><span class="line">      	<span class="comment">//调用了ThreadLocalMap的构造方法</span></span><br><span class="line">      t.threadLocals = <span class="keyword">new</span> <span class="title class_">ThreadLocal</span>.ThreadLocalMap(<span class="built_in">this</span>, firstValue);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>这个方法我们刚才分析过, 其作用是设置当前线程绑定的局部变量 :</p>
+<p> A. 首先获取当前线程，并根据当前线程获取一个Map</p>
+<p> B. 如果获取的Map不为空，则将参数设置到Map中（当前ThreadLocal的引用作为key）</p>
+<p> <strong>(这里调用了ThreadLocalMap的set方法)</strong></p>
+<p> C. 如果Map为空，<strong>则给该线程创建 Map，并设置初始值(也就是要set的值，因为是懒惰加载)</strong></p>
+<p> <strong>(这里调用了ThreadLocalMap的构造方法)</strong></p>
+<p>这段代码有两个地方分别涉及到ThreadLocalMap的两个方法, 我们接着分析这两个方法。</p>
+<p><strong>（2）构造方法<code>ThreadLocalMap(ThreadLocal&lt;?&gt; firstKey, Object firstValue)</code></strong></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"> <span class="comment">/*</span></span><br><span class="line"><span class="comment">  * firstKey : 本ThreadLocal实例(this)</span></span><br><span class="line"><span class="comment">  * firstValue ： 要保存的线程本地变量</span></span><br><span class="line"><span class="comment">  */</span></span><br><span class="line">ThreadLocalMap(ThreadLocal&lt;?&gt; firstKey, Object firstValue) &#123;</span><br><span class="line">        <span class="comment">//初始化table</span></span><br><span class="line">        table = <span class="keyword">new</span> <span class="title class_">ThreadLocal</span>.ThreadLocalMap.Entry[INITIAL_CAPACITY];</span><br><span class="line">        <span class="comment">//计算索引(重点代码）</span></span><br><span class="line">        <span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> firstKey.threadLocalHashCode &amp; (INITIAL_CAPACITY - <span class="number">1</span>);</span><br><span class="line">        <span class="comment">//设置值</span></span><br><span class="line">        table[i] = <span class="keyword">new</span> <span class="title class_">ThreadLocal</span>.ThreadLocalMap.Entry(firstKey, firstValue);</span><br><span class="line">        size = <span class="number">1</span>;</span><br><span class="line">        <span class="comment">//设置阈值</span></span><br><span class="line">        setThreshold(INITIAL_CAPACITY);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p> 构造函数首先创建一个<strong>长度为16的Entry数组</strong>，然后计算出<strong>firstKey对应的索引</strong>，然后存储到table中，并设置size和threshold。</p>
+<p> <strong>重点分析</strong>： <code>int i = firstKey.threadLocalHashCode &amp; (INITIAL_CAPACITY - 1)</code>。</p>
+<p>a. 关于<code>firstKey.threadLocalHashCode</code>：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"> 	<span class="keyword">private</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">threadLocalHashCode</span> <span class="operator">=</span> nextHashCode();</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="type">int</span> <span class="title function_">nextHashCode</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> nextHashCode.getAndAdd(HASH_INCREMENT);</span><br><span class="line">    &#125;</span><br><span class="line"><span class="comment">//AtomicInteger是一个提供原子操作的Integer类，通过线程安全的方式操作加减,适合高并发情况下的使用</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="type">AtomicInteger</span> <span class="variable">nextHashCode</span> <span class="operator">=</span>  <span class="keyword">new</span> <span class="title class_">AtomicInteger</span>();</span><br><span class="line">     <span class="comment">//特殊的hash值</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">int</span> <span class="variable">HASH_INCREMENT</span> <span class="operator">=</span> <span class="number">0x61c88647</span>;</span><br></pre></td></tr></table></figure>
+
+<p> 这里定义了一个AtomicInteger类型，每次获取当前值并加上HASH_INCREMENT，<code>HASH_INCREMENT = 0x61c88647</code>,这个值跟斐波那契数列（黄金分割数）有关，其主要目的就是为了让哈希码能均匀的分布在2的n次方的数组里, 也就是Entry[] table中，这样做可以尽量避免hash冲突。</p>
+<p>b. 关于<code>&amp; (INITIAL_CAPACITY - 1)</code> </p>
+<p> 计算hash的时候里面采用了hashCode &amp; (size - 1)<code>(0 1 2 3 4 -&gt; 0 1 )</code>的算法，这相当于取模运算hashCode % size的一个更高效的实现。正是因为这种算法，我们要求size必须是2的整次幂，这也能保证在索引不越界的前提下，使得hash发生冲突的次数减小。</p>
+<p><strong>（3） ThreadLocalMap中的set方法</strong></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title function_">set</span><span class="params">(ThreadLocal&lt;?&gt; key, Object value)</span> &#123;</span><br><span class="line">        ThreadLocal.ThreadLocalMap.Entry[] tab = table;</span><br><span class="line">        <span class="type">int</span> <span class="variable">len</span> <span class="operator">=</span> tab.length;</span><br><span class="line">        <span class="comment">//计算索引(重点代码，刚才分析过了）</span></span><br><span class="line">        <span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> key.threadLocalHashCode &amp; (len-<span class="number">1</span>);</span><br><span class="line">        <span class="comment">/**</span></span><br><span class="line"><span class="comment">         * 使用线性探测法查找元素（重点代码）</span></span><br><span class="line"><span class="comment">         */</span></span><br><span class="line">        <span class="keyword">for</span> (ThreadLocal.ThreadLocalMap.<span class="type">Entry</span> <span class="variable">e</span> <span class="operator">=</span> tab[i];</span><br><span class="line">             e != <span class="literal">null</span>;</span><br><span class="line">             e = tab[i = nextIndex(i, len)]) &#123;<span class="comment">//i = nextIndex(i, len) i会不断下移</span></span><br><span class="line">            ThreadLocal&lt;?&gt; k = e.get();</span><br><span class="line">            <span class="comment">//ThreadLocal 对应的 key 存在，直接覆盖之前的值</span></span><br><span class="line">            <span class="keyword">if</span> (k == key) &#123;</span><br><span class="line">                e.value = value;</span><br><span class="line">                <span class="keyword">return</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="comment">// key为 null，但是值不为 null，说明之前的 ThreadLocal 对象已经被回收了，</span></span><br><span class="line">           <span class="comment">// 当前数组中的 Entry 是一个陈旧（stale）的元素</span></span><br><span class="line">            <span class="keyword">if</span> (k == <span class="literal">null</span>) &#123;</span><br><span class="line">                <span class="comment">//用新元素替换陈旧的元素，这个方法进行了不少的垃圾清理动作，防止内存泄漏</span></span><br><span class="line">                replaceStaleEntry(key, value, i);</span><br><span class="line">                <span class="keyword">return</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    </span><br><span class="line">    	<span class="comment">//ThreadLocal对应的key不存在并且没有找到陈旧的元素，则在空元素的位置创建一个新的Entry。</span></span><br><span class="line">            tab[i] = <span class="keyword">new</span> <span class="title class_">Entry</span>(key, value);</span><br><span class="line">            <span class="type">int</span> <span class="variable">sz</span> <span class="operator">=</span> ++size;</span><br><span class="line">            <span class="comment">/**</span></span><br><span class="line"><span class="comment">             * cleanSomeSlots用于清除那些e.get()==null的元素，</span></span><br><span class="line"><span class="comment">             * 这种数据key关联的对象已经被回收，所以这个Entry(table[index])可以被置null。</span></span><br><span class="line"><span class="comment">             * 如果没有清除任何entry,并且当前使用量达到了负载因子所定义(长度的2/3)，那么进行				 * rehash（执行一次全表的扫描清理工作）</span></span><br><span class="line"><span class="comment">             */</span></span><br><span class="line">            <span class="keyword">if</span> (!cleanSomeSlots(i, sz) &amp;&amp; sz &gt;= threshold)</span><br><span class="line">                rehash();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"> <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * 获取环形数组的下一个索引</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">static</span> <span class="type">int</span> <span class="title function_">nextIndex</span><span class="params">(<span class="type">int</span> i, <span class="type">int</span> len)</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> ((i + <span class="number">1</span> &lt; len) ? i + <span class="number">1</span> : <span class="number">0</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p> 代码执行流程：</p>
+<p>A. 首先还是根据key计算出索引 i，然后查找i位置上的Entry，</p>
+<p>B. <strong>若是Entry已经存在</strong>并且key等于传入的key，那么这时候直接给这个Entry赋新的value值,</p>
+<p>C. <strong>若是Entry存在</strong>，但是key为null，则调用replaceStaleEntry来更换这个key为空的Entry,</p>
+<p>D. <strong>不断循环检测（没有找到Entry已经存在）</strong>，直到遇到为null的地方，这时候要是还没在循环过程中return，那么就在这个null的位置新建一个Entry，并且插入，同时size增加1。</p>
+<p> 最后调用cleanSomeSlots，清理key为null的Entry，最后返回是否清理了Entry，接下来再判断sz 是否&gt;&#x3D; thresgold达到了rehash的条件，达到的话就会调用rehash函数执行一次全表的扫描清理。</p>
+<p><strong>重点分析</strong> ： ThreadLocalMap使用<code>线性探测法</code>来解决哈希冲突的。</p>
+<p> 该方法一次探测下一个地址，直到有空的地址后插入，若整个空间都找不到空余的地址，则产生溢出。</p>
+<p> 举个例子，假设当前table长度为16，也就是说如果计算出来key的hash值为14，如果table[14]上已经有值，并且其key与当前key不一致，那么就发生了hash冲突，这个时候将14加1得到15，取table[15]进行判断，这个时候如果还是冲突会回到0，取table[0],以此类推，直到可以插入。</p>
+<p> 按照上面的描述，<strong>可以把Entry[] table看成一个环形数组</strong>。</p>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link"
+		data-enable="false"
+        data-ae="false"
+        data-ci=""
+        data-cs=""
+        data-r=""
+        data-o=""
+        data-a=""
+        data-d="false"
+    >查看评论</div>
+
+
+    </div>
+    
+</div>
+
+
+    </div>
+</div>
+</body>
+
+
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/typed.js"></script>
+<script src="/js/diaspora.js"></script>
+
+
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+
+
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+</html>

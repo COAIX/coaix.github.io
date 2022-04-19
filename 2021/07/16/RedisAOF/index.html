@@ -1,0 +1,203 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Redis AOF日志 - COAIX</title>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate" />
+    <meta name="keywords" content="COAIX,"> 
+    <meta name="description" content="求知若饥，虚心若愚,AOF日志特点AOF日志，Redis先执行命令，把数据写入内存，然后记录日志
+AOF 里记录的是 Redis 收到的每一条命令，这些命令是以文本形式保存的。更像binlog
+Redis 在向 AOF,"> 
+    <meta name="author" content="COAIX"> 
+    <link rel="alternative" href="atom.xml" title="COAIX" type="application/atom+xml"> 
+    <link rel="icon" href="/img/favicon.png"> 
+    
+    
+    
+    <meta name="twitter:card" content="summary"/>
+    <meta name="twitter:title" content="Redis AOF日志 - COAIX"/>
+    <meta name="twitter:description" content="求知若饥，虚心若愚,AOF日志特点AOF日志，Redis先执行命令，把数据写入内存，然后记录日志
+AOF 里记录的是 Redis 收到的每一条命令，这些命令是以文本形式保存的。更像binlog
+Redis 在向 AOF,"/>
+    
+    
+    
+    
+    <meta property="og:site_name" content="COAIX"/>
+    <meta property="og:type" content="object"/>
+    <meta property="og:title" content="Redis AOF日志 - COAIX"/>
+    <meta property="og:description" content="求知若饥，虚心若愚,AOF日志特点AOF日志，Redis先执行命令，把数据写入内存，然后记录日志
+AOF 里记录的是 Redis 收到的每一条命令，这些命令是以文本形式保存的。更像binlog
+Redis 在向 AOF,"/>
+    
+<link rel="stylesheet" href="/css/diaspora.css">
+
+<meta name="generator" content="Hexo 6.1.0"></head>
+
+<body class="loading">
+    <span id="config-title" style="display:none">COAIX</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="iconfont icon-home image-icon" href="javascript:;" data-url="http://coaix.cloud"></a>
+    <div title="播放/暂停" class="iconfont icon-play"></div>
+    <h3 class="subtitle">Redis AOF日志</h3>
+    <div class="social">
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="iconfont icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class='main'>
+        <h1 class="title">Redis AOF日志</h1>
+        <div class="stuff">
+            <span>七月 16, 2021</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <h1 id="AOF日志"><a href="#AOF日志" class="headerlink" title="AOF日志"></a>AOF日志</h1><h2 id="特点"><a href="#特点" class="headerlink" title="特点"></a>特点</h2><p><strong>AOF日志，Redis<code>先执行命令</code>，把数据写入内存，然后记录日志</strong></p>
+<p><strong>AOF 里记录的是 <code>Redis 收到的每一条命令</code>，这些命令是<code>以文本形式保存</code>的。更像binlog</strong></p>
+<p>Redis 在向 AOF 里面记录日志的时候，<code>并不会先去对这些命令进行语法检查</code>。所以，如果<code>先记日志再执行命令的话，日志中就有可能记录了错误的命令，Redis 在使用日志恢复数据时，就可能会出错。</code>而先执行命令也可以防止错误的命令被记入AOF日志</p>
+<h2 id="风险"><a href="#风险" class="headerlink" title="风险"></a>风险</h2><ol>
+<li>如果刚执行完一个命令，还没有来得及记日志就宕机了，那么这个命令和相应的数据就有丢失的风险。</li>
+<li><strong>AOF 虽然避免了对当前命令的阻塞，但可能会给下一个操作带来阻塞风险。</strong>这是因为，<strong>AOF 日志也是在主线程中执行的</strong>，如果在把日志文件写入磁盘时，磁盘写压力大，就会导致写盘很慢，进而导致后续的操作也无法执行了。</li>
+</ol>
+<h2 id="三种写回策略"><a href="#三种写回策略" class="headerlink" title="三种写回策略"></a>三种写回策略</h2><blockquote>
+<p>控制AOF的写回时机</p>
+</blockquote>
+<p><strong><mark>Always</mark>同步写回</strong>：每个写命令执行完，<strong>立马同步</strong>地将日志写回磁盘；</p>
+<p><strong><mark>Everysec</mark>每秒写回</strong>：每个写命令执行完，只是先把日志写到 <strong>AOF 文件的内存缓冲区</strong>，<strong>每隔一秒</strong>把缓冲区中的内容写入磁盘；</p>
+<p><strong><mark>No</mark>操作系统控制的写回</strong>：每个写命令执行完，只是先把日志写到 <strong>AOF 文件的内存缓冲区</strong>，由<strong>操作系统决定</strong>何时将缓冲区内容写回磁盘。</p>
+<p><img src="/redis_COAIX/tmp7EC2.png" alt="tmp7EC2"></p>
+<h2 id="AOF重写机制"><a href="#AOF重写机制" class="headerlink" title="AOF重写机制"></a>AOF重写机制</h2><p>重写时，Redis 根据数据库的现状<strong>创建一个新的 AOF 文件</strong>，也就是说，<strong>读取数据库中的所有键值对，然后对每一个键值对用一条命令记录它的写入</strong>。</p>
+<p>将Redis的每一条数据直接用一个<code>set key value</code>记录。当一个键值对被多条写命令反复修改时，AOF 文件会记录相应的多条命令。但是，在重写的时候，是根据这个键值对当前的最新状态，为它生成对应的写入命令。</p>
+<h3 id="重写会阻塞吗"><a href="#重写会阻塞吗" class="headerlink" title="重写会阻塞吗?"></a>重写会阻塞吗?</h3><p><code>不会</code></p>
+<blockquote>
+<p><strong>每次 AOF 重写时，Redis 会先执行一个内存拷贝，用于重写</strong>；然后，使用两个日志保证在重写过程中，新写入的数据不会丢失。而且，<strong>因为 Redis 采用额外的线程进行数据重写，所以，这个过程并不会阻塞主线程。</strong></p>
+</blockquote>
+<p>**<mark>一个拷贝</mark>**：</p>
+<p>每次执行重写时，<strong>主线程 fork 出后台的 bgrewriteaof 子进程</strong>。此时，<strong>fork 会把主线程的内存拷贝一份给 bgrewriteaof 子进程</strong>，这里面就包含了数据库的最新数据。然后，<strong>bgrewriteaof 子进程就可以在不影响主线程的情况下，逐一把拷贝的数据写成操作，记入重写日志。</strong></p>
+<p><strong><mark>两处日志</mark></strong>:</p>
+<ul>
+<li><p>1如果有写操作，<strong>第一处日志就是指正在使用的 AOF 日志</strong>，Redis 会把这个操作写到它的缓冲区。这样一来，即使宕机了，这<br>个 AOF 日志的操作仍然是齐全的，可以用于恢复。</p>
+</li>
+<li><p><strong>2就是指新的 AOF 重写日志</strong>。这个操作也会被写到重写日志的缓冲区。这样，重写日志也不会丢失最新的操作。等到拷贝数据的所有操作记录重写完成后，重写日志记录的这些最新操作也会写入新的 AOF 文件，以保证数据库最新状态的记录。此时，就可以用新的 AOF 文件替代旧文件了。</p>
+</li>
+</ul>
+<p><img src="/redis_COAIX/tmp10D8.png" alt="tmp10D8"></p>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link"
+		data-enable="false"
+        data-ae="false"
+        data-ci=""
+        data-cs=""
+        data-r=""
+        data-o=""
+        data-a=""
+        data-d="false"
+    >查看评论</div>
+
+
+    </div>
+    
+</div>
+
+
+    </div>
+</div>
+</body>
+
+
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/typed.js"></script>
+<script src="/js/diaspora.js"></script>
+
+
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+
+
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+</html>

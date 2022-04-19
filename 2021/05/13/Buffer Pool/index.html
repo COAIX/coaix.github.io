@@ -1,0 +1,332 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Buffer Pool - COAIX</title>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate" />
+    <meta name="keywords" content="COAIX,"> 
+    <meta name="description" content="求知若饥，虚心若愚,Buffer Pool
+
+
+内存的数据页是在 Buffer Pool (BP) 中管理的，在 WAL 里 Buffer Pool 起到了加速更新的作用。而实际上，Buffer Pool 还有一个更重,"> 
+    <meta name="author" content="COAIX"> 
+    <link rel="alternative" href="atom.xml" title="COAIX" type="application/atom+xml"> 
+    <link rel="icon" href="/img/favicon.png"> 
+    
+    
+    
+    <meta name="twitter:card" content="summary"/>
+    <meta name="twitter:title" content="Buffer Pool - COAIX"/>
+    <meta name="twitter:description" content="求知若饥，虚心若愚,Buffer Pool
+
+
+内存的数据页是在 Buffer Pool (BP) 中管理的，在 WAL 里 Buffer Pool 起到了加速更新的作用。而实际上，Buffer Pool 还有一个更重,"/>
+    
+    
+    
+    
+    <meta property="og:site_name" content="COAIX"/>
+    <meta property="og:type" content="object"/>
+    <meta property="og:title" content="Buffer Pool - COAIX"/>
+    <meta property="og:description" content="求知若饥，虚心若愚,Buffer Pool
+
+
+内存的数据页是在 Buffer Pool (BP) 中管理的，在 WAL 里 Buffer Pool 起到了加速更新的作用。而实际上，Buffer Pool 还有一个更重,"/>
+    
+<link rel="stylesheet" href="/css/diaspora.css">
+
+<meta name="generator" content="Hexo 6.1.0"></head>
+
+<body class="loading">
+    <span id="config-title" style="display:none">COAIX</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="iconfont icon-home image-icon" href="javascript:;" data-url="http://coaix.cloud"></a>
+    <div title="播放/暂停" class="iconfont icon-play"></div>
+    <h3 class="subtitle">Buffer Pool</h3>
+    <div class="social">
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="iconfont icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class='main'>
+        <h1 class="title">Buffer Pool</h1>
+        <div class="stuff">
+            <span>五月 13, 2021</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <h1 id="Buffer-Pool"><a href="#Buffer-Pool" class="headerlink" title="Buffer Pool"></a>Buffer Pool</h1><img src="Buffer Pool/tmp2A21.png" alt="tmp2A21"  />
+
+<blockquote>
+<p><strong>内存的数据页</strong>是在 Buffer Pool (BP) 中管理的，在 <strong>WAL 里 Buffer Pool 起到了加速更新的作用</strong>。而实际上，Buffer Pool 还有一个更重要的作用，就是<strong>加速查询。</strong></p>
+</blockquote>
+<p>当<strong>内存数据页跟磁盘数据页内容不一致</strong>的时候，我们称这个内存页为“<strong>脏页</strong>”。<strong>内存数据写入到磁盘后</strong>，<strong>内存和磁盘上的数据页的内容就一致</strong>了，称为“<strong>干净页</strong>”。</p>
+<h2 id="InnoDB-刷脏页的控制策略"><a href="#InnoDB-刷脏页的控制策略" class="headerlink" title="InnoDB 刷脏页的控制策略"></a>InnoDB 刷脏页的控制策略</h2><p>InnoDB 的刷盘速度就是要参考这两个因素：一个是<strong>脏页比例</strong>，一个是 <strong>redo log 写盘速度。</strong></p>
+<blockquote>
+<p>InnoDB 每次写入的日志都有一个<strong>序号</strong>，当前写入的序号跟 <strong>checkpoint</strong> 对应的序号之间的差值，我们假设为 N。InnoDB 会根据这个 N <strong>算出一个范围在 0 到 100 之间的数字</strong>，这个计算公式可以记为 F2(N)。F2(N) 算法比较复杂，你只要知道 N 越大，算出来的值越大就好了。然后，根据上述算得的 F1(M) 和 F2(N) 两个值，取其中较大的值记为 R，之后引擎就可以按照 <strong>innodb_io_capacity</strong> 定义的能力乘以 <strong>R%</strong> 来控制刷脏页的速度。</p>
+</blockquote>
+<img src="https://static001.geekbang.org/resource/image/cc/74/cc44c1d080141aa50df6a91067475374.png" alt="img" style="zoom: 50%;" />
+
+
+
+<h2 id="管理算法LRU-改良版"><a href="#管理算法LRU-改良版" class="headerlink" title="管理算法LRU(改良版)"></a>管理算法LRU(改良版)</h2><p><strong>InnoDB 内存管理用的是最近最少使用 (Least Recently Used, LRU) 算法,但是并没有直接使用，因为如果是全表扫描，Buffer pool里面的数据全被替换成历史数据，内存命中率大大下降</strong></p>
+<p>InnoDB 对 <code>LRU 算法做了改进</code></p>
+<p><strong>Young区</strong>:经常访问的</p>
+<p><strong>Old区</strong>:不怎么访问的</p>
+<p>![tmp828E](Buffer Pool&#x2F;tmp828E.png)</p>
+<p>在InnoDB实现上，按照**<code>5:3</code><strong>的比例把整个LRU链表分成了</strong>young区域<strong>和</strong>old区域<strong>。图中</strong><code>LRU_old</code><strong>指向的就是old区域的第一个位置，</strong><code>是整个链表的5/8处</code><strong>。也就是说，</strong>靠近链表头部的5&#x2F;8是young区域，靠近链表尾部的3&#x2F;8是old区域**。</p>
+<p><strong>Young</strong>区跟之前一样</p>
+<ul>
+<li>访问一个新的不存在于当前链表的数据页，这时候依然是淘汰掉数据页最尾部最久未使用的页(Pm)，但是新插入的数据页(Px)，是放在 <strong><code>LRU_old</code></strong> 处。</li>
+<li>处于 old 区域的数据页，每次<strong>被访问</strong>的时候都要做下面这个判断：<ul>
+<li><strong>若这个数据页在 LRU 链表中存在的时间超过了 1 秒，就把它移动到链表头部,进入young区</strong>；</li>
+<li>如果这个数据页<strong>在 LRU 链表中存在的时间短于 1 秒</strong>，<strong>位置保持不变</strong>。1 秒这个时间，是由参数 <strong><code>innodb_old_blocks_time</code></strong> 控制的。其默认值是 1000，单位毫秒。</li>
+</ul>
+</li>
+</ul>
+<p><strong><mark>具体执行步骤</mark></strong></p>
+<ol>
+<li>扫描过程中，需要新插入的数据页，都被放到 old 区域 ;</li>
+<li>一个数据页里面有多条记录，这个数据页会被多次访问到，但由于是顺序扫描，这个数据页第一次被访问和最后一次被访问的时间间隔不会超过 1 秒，因此还是会被保留在 old 区域；</li>
+<li>再继续扫描后续的数据**，之前的这个数据页之后也不会再被访问到(也就没有机会存在超过1秒)**，于是始终没有机会移到链表头部（也就是 young 区域），很快就会被淘汰出去。</li>
+</ol>
+<p>这个策略最大的收益，就是在扫描这个大表的过程中，虽然也用到了 Buffer Pool，但是对 young 区域完全没有影响，从而保证了 Buffer Pool 响应正常业务的<strong>查询命中率。</strong></p>
+<blockquote>
+<p>如果用旧LRU，扫一个大表Buffer Pool数据就全被置换出去了，内存命中率大大降低</p>
+</blockquote>
+<h2 id="page"><a href="#page" class="headerlink" title="page"></a>page</h2><p>已经在内存中的表信息</p>
+<h2 id="change-buffer"><a href="#change-buffer" class="headerlink" title="change buffer"></a>change buffer</h2><blockquote>
+<p>普通索引，更新过程中使用**<code>change buffer</code><strong>，一次update，如果是</strong>普通索引**，直接将更新记录在change buffer中，结束</p>
+<p>虽然名字叫作 change buffer，实际上它是可以<strong>持久化的数据</strong>。也就是说，change buffer <strong>在内存中有拷贝，也会被写入到磁盘上。</strong>不持久话就会面临数据丢失的一致性问题</p>
+<p>写入change buffer 的同时也会写入 redo log，但是作用不同，redo log 主要节省的是随机<strong>写磁盘的IO消耗</strong>（转成顺序写），而change buffer主要节省的则是<strong>随机读磁盘的IO消耗，change buffer 只有被读到的时候才会写入内存</strong>。</p>
+</blockquote>
+<p><strong>Update:</strong></p>
+<p>第一种情况是，这个记录要<strong>更新的目标页在内存中</strong>。这时，InnoDB 的处理流程如下：</p>
+<ul>
+<li>对于<strong>唯一索引</strong>来说，找到 3 和 5 之间的位置，<strong>判断</strong>到没有冲突，插入这个值，语句执行结束；</li>
+<li>对于<strong>普通索引</strong>来说，找到 3 和 5 之间的位置，插入这个值，语句执行结束。</li>
+</ul>
+<p>这样看来，普通索引和唯一索引对更新语句性能影响的差别，只是一个判断，只会耗费微小的 CPU 时间。</p>
+<p>第二种情况是，这个记录要更新的目标页<strong>不在内存中</strong>。这时，InnoDB 的处理流程如下：</p>
+<ul>
+<li>对于唯一索引来说，需要将数据页读入内存，判断到没有冲突，插入这个值，语句执行结束；</li>
+<li>对于普通索引来说，则是将更新记录在 change buffer，语句执行就结束了。</li>
+</ul>
+<p><strong>merge阶段：</strong></p>
+<p>当从磁盘读change buffer中存在的数据页的时候，就会将change buffer中的操作写入这个数据页    </p>
+<p>为什么只能普通索引，其他索引不可以呢？</p>
+<p>因为如果是其他索引，<strong>比如主键索引，一开始就要查找是否有主键冲突，直接就把表读到内存中来了，</strong>这样不需要<code>change buffer</code>直接在内存中改就可以了</p>
+<p><strong><mark>使用建议</mark></strong></p>
+<p>如果是写多读少的话，很适合中change buffer，如果写完马上读的话不适合使用change buffer，因为merge会在写完马上进行，这样并没有减少读IO的次数，反而需要给change buffer的维护付出代价</p>
+<p><strong><mark>Change buffer 工作流程</mark></strong></p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql<span class="operator">&gt;</span> <span class="keyword">insert</span> <span class="keyword">into</span> t(id,k) <span class="keyword">values</span>(id1,k1),(id2,k2);</span><br></pre></td></tr></table></figure>
+
+<p><strong>这边是针对k的索引树的更新，主键是唯一索引，需要进行唯一性判断。</strong></p>
+<p><strong>主键索引用不上，都是对于那些二级索引的才有效。 一个insert语句要操作所有索引的嘛，收益在二级索引</strong></p>
+<blockquote>
+<p>一个insert语句执行，<strong>既要修改主键索引，又要修改普通索引</strong>，但是普通索引可以直接写入change buffer中就结束，下次用到再merge<strong>修正</strong>，<strong>而主键索引需要判断唯一性，读进来判断再修改</strong></p>
+</blockquote>
+<img src="Buffer Pool/tmpFDC.png" alt="tmpFDC" style="zoom:67%;" />
+
+<blockquote>
+<p><strong>数据表空间</strong>：就是一个个的表数据文件，对应的磁盘文件就是“表名.ibd”； </p>
+<p><strong>系统表空间</strong>：用来放系统信息，如数据字典等，对应的磁盘文件是“ibdata1”</p>
+</blockquote>
+<p>这条更新语句做了如下的操作（按照图中的数字顺序）：</p>
+<ol>
+<li>Page 1 在内存中，直接更新内存；</li>
+<li>Page 2 没有在内存中，就在内存的 change buffer 区域，记录下“我要往 Page 2 插入一行”这个信息</li>
+<li>将上述两个动作记入 redo log 中（图中 3 和 4）。</li>
+</ol>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> t <span class="keyword">where</span> k <span class="keyword">in</span> (k1, k2)</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>读 Page 1 的时候，直接从内存返回</li>
+<li><strong>读入内存修正：</strong>要读 Page 2 的时候，需要把 Page 2 从磁盘读入内存中，然后应用 change buffer 里面的操作日志，生成一个正确的版本并返回结果。</li>
+</ol>
+<h2 id="join-buffer"><a href="#join-buffer" class="headerlink" title="join buffer"></a>join buffer</h2><p><strong>Block Nested-Loop Join</strong></p>
+<blockquote>
+<p>join <strong>没有利用索引情况下的算法BNL</strong></p>
+</blockquote>
+<p>将驱动表<code>SELECT *</code>入内存<strong>join_buffer</strong>,因为<strong>驱动表在内存</strong>中，所以处理速度会比Simple快</p>
+<p>但是驱动表很大，<strong>join_buffer</strong>不够大怎么办捏？这个时候采用分段法</p>
+<p><strong>执行过程</strong>就变成了：</p>
+<ol>
+<li>扫描表 t1，顺序读取数据行放入 join_buffer 中，放完第 88 行 join_buffer 满了，继续第 2 步；</li>
+<li>扫描表 t2，把 t2 中的每一行取出来，跟 join_buffer 中的数据做对比，满足 join 条件的，作为结果集的一部分返回；</li>
+<li><strong>清空</strong> join_buffer；</li>
+<li>继续扫描表 t1，顺序读取最后的 12 行数据放入 join_buffer 中，继续执行第 2 步。</li>
+</ol>
+<blockquote>
+<p>join_buffer越大，采用这种算法扫描的行数就会越少</p>
+</blockquote>
+<p><strong>缺点：</strong></p>
+<p>因为驱动表要读进join buffer，驱动表如果很大，那么因为<strong>读取的时间长，很可能存在的时间过了门槛，能进young区</strong>，这样一来本来热点数据又被置换出去</p>
+<p>业务正常访问的数据，第一次访问进入<strong>old</strong>，假设2s之后第二次访问，发现old里面没有，因为old被那个正在做join的大的被驱动表被置换出去了，导致原本应该进入young区域的业务数据只好再次读磁盘，再放入old。 </p>
+<p><strong>young区域</strong>的情况则是，应该进入young的数据没有进入，则原本要被淘汰的就会留在young里，young的头部还会进入那张冷数据表的数据。</p>
+<p><strong>对 Buffer Pool 的影响就是持续性的</strong></p>
+<p>也就是说，<strong>BNL</strong> 算法对系统的影响主要包括<code>三个方面</code>：</p>
+<ol>
+<li>可能会多次扫描被驱动表，占用磁盘 IO </li>
+<li>资源；判断 join 条件需要执行 M*N 次对比（M、N 分别是两张表的行数），如果是大表就会占用非常多的 CPU 资源；</li>
+<li>可能会导致 Buffer Pool 的热数据被淘汰，影响内存命中率。</li>
+</ol>
+<h2 id="Soft-Buffer"><a href="#Soft-Buffer" class="headerlink" title="Soft Buffer"></a>Soft Buffer</h2><p>将找出来的行放入sort buffer然后在sort buffer中排序，如果有limit N在排序完之后还会取前N行返回</p>
+<p>如果sort buffer放不下还会利用磁盘临时文件来辅助排序，<strong>外部排序：<code>归并排序</code>，MySQL将需要排序的数据分成12份，每一份单独排序后存在这些临时文件中。然后把这12个有序文件再合并成一个有序的大文件。</strong></p>
+<p>还有可能采用堆排序优先队列法**:point_right:<a href="#%E4%BC%98%E5%85%88%E9%98%9F%E5%88%97%E6%B3%95"><code>优先队列—堆排序法</code></a>**</p>
+<p><strong><mark>row id排序</mark></strong>:</p>
+<p>如果单行数据太大，Mysql还会采用<strong>rowid排序</strong></p>
+<p>放入sort_buffer的字段，只有要<strong>排序的列</strong>和<strong>主键id</strong>。排序之后回表找出select的数据返回。</p>
+<blockquote>
+<p>优先选择全字段排序，如果内存够，就要多利用内存，尽量减少磁盘访问。</p>
+</blockquote>
+<p><strong><mark>调优参考</mark></strong>:</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> t <span class="keyword">where</span> city <span class="operator">=</span> <span class="string">&#x27;杭州&#x27;</span> <span class="keyword">order</span> <span class="keyword">by</span> name;</span><br></pre></td></tr></table></figure>
+
+<p>像这个sql语句可以考虑创建<code>(city,name)</code>利用联合索引，先按city排序然后按name排序，这样相同city的name是有序的</p>
+<p><strong><mark>参数</mark></strong>:</p>
+<p><strong><code>sort_buffer_size</code></strong>:<strong>就是MySQL为排序开辟的内存（sort_buffer）的大小</strong></p>
+<p><strong><code>max_length_for_sort_data</code></strong>:<strong>是MySQL中专门控制用于排序的行数据的长度的一个参数。它的意思是，如果<code>单行的长度超过这个值</code>，MySQL就认为单行太大，要换一个算法。</strong></p>
+<h3 id="全字段排序"><a href="#全字段排序" class="headerlink" title="全字段排序"></a><strong>全字段排序</strong></h3><p>![image-20220320162528985](Buffer Pool&#x2F;image-20220320162528985.png)</p>
+<h3 id="Row-id排序"><a href="#Row-id排序" class="headerlink" title="Row id排序"></a><strong>Row id排序</strong></h3><p>![image-20220320164000369](Buffer Pool&#x2F;image-20220320164000369.png)</p>
+<h3 id="特殊情况-Order-by-rand"><a href="#特殊情况-Order-by-rand" class="headerlink" title="特殊情况:Order by rand()"></a>特殊情况:Order by rand()<a name="orderbyrand"></a></h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">select</span> word <span class="keyword">from</span> words <span class="keyword">order</span> <span class="keyword">by</span> rand() limit <span class="number">3</span>;</span><br></pre></td></tr></table></figure>
+
+<p>![image-20220320163813269](Buffer Pool&#x2F;image-20220320163813269.png)</p>
+<blockquote>
+<p>Extra字段显示Using temporary，表示的是需要使用**<code>临时表</code><strong>；</strong>Using filesort<strong>，表示的是</strong>需要执行排序操作<strong>。因此这个Extra的意思就是，需要</strong><code>临时表</code><strong>，并且</strong><code>需要在临时表上排序</code><strong>。使用是</strong><mark>Memory</mark><strong>引擎创建的临时表。</strong><a href="#%E4%B8%B4%E6%97%B6%E8%A1%A8">:point_right:临时表种类</a>**</p>
+</blockquote>
+<ul>
+<li>将select的字段和rand()生成的随机0-1之间值组合起来入临时内存表中(**<mark>Memory</mark>**引擎)</li>
+<li>将内存表中rand()值和数组下标放入sort buffer中(不是组织索引表row id不是主键,<strong><code>内存表row id是数组下标，数组下标唯一标识一行元素，用于回表</code></strong>)</li>
+<li>sort buffer(只管排序)按rand()排序起到随机效果，然后 limit 3 取前三个回表查询，这个**~<strong>，拿着内存表的</strong><code>row id 数组下标</code>**回内存表找数据加入结果集中</li>
+</ul>
+<p>![image-20220320165820727](Buffer Pool&#x2F;image-20220320165820727.png)</p>
+<h3 id="Order-by-limit的优先队列法"><a href="#Order-by-limit的优先队列法" class="headerlink" title="Order by limit的优先队列法"></a>Order by limit的优先队列法<a name="优先队列法"></a></h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">select</span> word <span class="keyword">from</span> words <span class="keyword">order</span> <span class="keyword">by</span> rand() limit <span class="number">3</span>;</span><br></pre></td></tr></table></figure>
+
+<p>在Mysql5.6版本之后采用堆排序，**<code>limit 3</code><strong>前三个数构成大根堆，遍历剩下的值，比根元素小则替换，然后heapify在构成大根堆，以此循环，最后得到的就是最小的三个数，这种情况不需要用到内存表，直接在sort buffer中就可以完成，但是如果</strong>sort buffer太小<strong>，</strong><code>limit 1000</code><strong>要取的数太大，不可能维护一个1000个元素的堆，就会</strong><code>采用磁盘临时表，变成Innodb，采用归并算法</code>**</p>
+<h1 id="Mysql的索引"><a href="#Mysql的索引" class="headerlink" title="Mysql的索引"></a>Mysql的索引</h1><blockquote>
+<p>MYSQL做<strong>词法分析语法</strong>分析的时候是通过建立<strong>最左子树</strong>来建立<strong>语法树</strong>的，解析的过程也是<strong>从左到右所以遵循最左前缀的原则</strong>。</p>
+<p><strong>对索引字段做函数操作</strong>，可能会<strong>破坏索引值的有序性</strong>，因此优化器就决定放弃走树搜索功能。</p>
+<ul>
+<li>索引字段是varchar，但是where查找字段是数字，会用函数把varchar转换成数字</li>
+</ul>
+</blockquote>
+<h2 id=""><a href="#" class="headerlink" title=""></a></h2>
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link"
+		data-enable="false"
+        data-ae="false"
+        data-ci=""
+        data-cs=""
+        data-r=""
+        data-o=""
+        data-a=""
+        data-d="false"
+    >查看评论</div>
+
+
+    </div>
+    
+</div>
+
+
+    </div>
+</div>
+</body>
+
+
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/typed.js"></script>
+<script src="/js/diaspora.js"></script>
+
+
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+
+
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+</html>

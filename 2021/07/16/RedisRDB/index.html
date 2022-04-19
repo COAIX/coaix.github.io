@@ -1,0 +1,224 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RedisRDB日志 - COAIX</title>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate" />
+    <meta name="keywords" content="COAIX,"> 
+    <meta name="description" content="求知若饥，虚心若愚,RDB内存快照
+Redis 会使用 bgsave 对当前内存中的所有数据做快照，这个操作是子进程在后台完成的，这就允许主线程同时可以修改数据。
+
+bgsave：**创建一个子进程，专门用于写入 RD,"> 
+    <meta name="author" content="COAIX"> 
+    <link rel="alternative" href="atom.xml" title="COAIX" type="application/atom+xml"> 
+    <link rel="icon" href="/img/favicon.png"> 
+    
+    
+    
+    <meta name="twitter:card" content="summary"/>
+    <meta name="twitter:title" content="RedisRDB日志 - COAIX"/>
+    <meta name="twitter:description" content="求知若饥，虚心若愚,RDB内存快照
+Redis 会使用 bgsave 对当前内存中的所有数据做快照，这个操作是子进程在后台完成的，这就允许主线程同时可以修改数据。
+
+bgsave：**创建一个子进程，专门用于写入 RD,"/>
+    
+    
+    
+    
+    <meta property="og:site_name" content="COAIX"/>
+    <meta property="og:type" content="object"/>
+    <meta property="og:title" content="RedisRDB日志 - COAIX"/>
+    <meta property="og:description" content="求知若饥，虚心若愚,RDB内存快照
+Redis 会使用 bgsave 对当前内存中的所有数据做快照，这个操作是子进程在后台完成的，这就允许主线程同时可以修改数据。
+
+bgsave：**创建一个子进程，专门用于写入 RD,"/>
+    
+<link rel="stylesheet" href="/css/diaspora.css">
+
+<meta name="generator" content="Hexo 6.1.0"></head>
+
+<body class="loading">
+    <span id="config-title" style="display:none">COAIX</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="iconfont icon-home image-icon" href="javascript:;" data-url="http://coaix.cloud"></a>
+    <div title="播放/暂停" class="iconfont icon-play"></div>
+    <h3 class="subtitle">RedisRDB日志</h3>
+    <div class="social">
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="iconfont icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class='main'>
+        <h1 class="title">RedisRDB日志</h1>
+        <div class="stuff">
+            <span>七月 16, 2021</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <h1 id="RDB内存快照"><a href="#RDB内存快照" class="headerlink" title="RDB内存快照"></a>RDB内存快照</h1><blockquote>
+<p><strong>Redis 会使用 bgsave 对当前内存中的所有数据做快照，这个操作是子进程在后台完成的，这就允许主线程同时可以修改数据。</strong></p>
+</blockquote>
+<p><strong>bgsave</strong>：**<code>创建一个子进程</code><strong>，专门用于写入 RDB 文件，避免了主线程的阻塞，这也是Redis RDB 文件生成的</strong>默认配置**。</p>
+<p><strong>save</strong>：在**<code>主线程中执行</code>**，会导致阻塞；</p>
+<p><strong>内存中的数据在某一个时刻的状态记录</strong></p>
+<table>
+<thead>
+<tr>
+<th>快照种类</th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>全量快照</td>
+<td>把内存中的所有数据都记录到磁盘中</td>
+</tr>
+<tr>
+<td>增量快照</td>
+<td>做了一次全量快照后，后续的快照只对修改的数据进行快照记录，这样可以避免每次全量快照的开销。</td>
+</tr>
+</tbody></table>
+<p><strong>如何拿到快照这一刻的数据？</strong></p>
+<p><strong><mark>写时复制技术</mark></strong>:</p>
+<p><strong>bgsave 子进程</strong>是由主线程 fork 生成的，<strong>可以共享主线程的所有内存数据</strong>。bgsave 子进程运行后，开始读取主线程的内存数据，并把它们写入 RDB 文件。</p>
+<p>如果主线程对这些数据也都是<strong>读操作</strong>（例如图中的键值对 A），那么，<strong>主线程和bgsave 子进程相互不影响</strong>。但是，如果主线程<strong>要修改一块数据</strong>（例如图中的键值对 C），那么，<strong>这块数据就会被复制一份，生成该数据的副本。然后，bgsave 子进程会把这个副本</strong><br><strong>数据写入 RDB 文件，而在这个过程中，主线程仍然可以直接修改原来的数据。</strong></p>
+<blockquote>
+<p>也就是说，bgsave子进程读取主线程的内存数据，如果主线程update了某一块数据，会生成一块这块数据的副本给bgsave进程读取写入RDB文件</p>
+</blockquote>
+<p><img src="/redis_COAIX/tmp2F8C.png" alt="tmp2F8C"></p>
+<h1 id="混合使用AOF和RDB"><a href="#混合使用AOF和RDB" class="headerlink" title="混合使用AOF和RDB"></a>混合使用AOF和RDB</h1><p>频繁全量快照，开销很大，磁盘压力很大</p>
+<p>增量快照，还需要记录哪些数据修改了，空间开销大</p>
+<p>所以，我们<strong>混合使用AOF和RDB</strong></p>
+<blockquote>
+<p><strong>混合使用 AOF 日志和内存快照的方法。简单来说，内存快照以一定的频率执行，在两次快照之间，使用 AOF 日志记录这期间的所有命令操作。</strong></p>
+<p>一定频率：</p>
+<ul>
+<li>一定时间内写入了多少条数据执行内存快照</li>
+</ul>
+</blockquote>
+<p><strong>全量快照的时候就可以清空AOF日志了，因为快照的时候数据已经是全的了</strong></p>
+<p><img src="/redis_COAIX/tmpC2F6.png" alt="tmpC2F6"></p>
+<h3 id="数据恢复"><a href="#数据恢复" class="headerlink" title="数据恢复"></a>数据恢复</h3><p>开启了<code>混合持久化</code>时，<strong>启动redis依然优先加载aof文件</strong></p>
+<p>aof文件加载可能有两种情况如下：</p>
+<ol>
+<li><strong>aof文件开头是rdb的格式</strong>, 先加载 rdb内容再加载剩余的 aof。</li>
+<li><strong>aof文件开头不是rdb的格式</strong>，直接以aof格式加载整个文件。</li>
+</ol>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link"
+		data-enable="false"
+        data-ae="false"
+        data-ci=""
+        data-cs=""
+        data-r=""
+        data-o=""
+        data-a=""
+        data-d="false"
+    >查看评论</div>
+
+
+    </div>
+    
+</div>
+
+
+    </div>
+</div>
+</body>
+
+
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/typed.js"></script>
+<script src="/js/diaspora.js"></script>
+
+
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+
+
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+</html>

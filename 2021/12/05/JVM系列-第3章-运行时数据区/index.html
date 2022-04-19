@@ -1,0 +1,375 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>运行时数据区 - COAIX</title>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate" />
+    <meta name="keywords" content="COAIX,"> 
+    <meta name="description" content="求知若饥，虚心若愚,
+此章把运行时数据区里比较少的地方讲一下。虚拟机栈，堆，方法区这些地方后续再讲。
+
+运行时数据区概述及线程前言本节主要讲的是运行时数据区，也就是下图这部分，它是在类加载完成后的阶段
+
+
+当我们通过前,"> 
+    <meta name="author" content="COAIX"> 
+    <link rel="alternative" href="atom.xml" title="COAIX" type="application/atom+xml"> 
+    <link rel="icon" href="/img/favicon.png"> 
+    
+    
+    
+    <meta name="twitter:card" content="summary"/>
+    <meta name="twitter:title" content="运行时数据区 - COAIX"/>
+    <meta name="twitter:description" content="求知若饥，虚心若愚,
+此章把运行时数据区里比较少的地方讲一下。虚拟机栈，堆，方法区这些地方后续再讲。
+
+运行时数据区概述及线程前言本节主要讲的是运行时数据区，也就是下图这部分，它是在类加载完成后的阶段
+
+
+当我们通过前,"/>
+    
+    
+    
+    
+    <meta property="og:site_name" content="COAIX"/>
+    <meta property="og:type" content="object"/>
+    <meta property="og:title" content="运行时数据区 - COAIX"/>
+    <meta property="og:description" content="求知若饥，虚心若愚,
+此章把运行时数据区里比较少的地方讲一下。虚拟机栈，堆，方法区这些地方后续再讲。
+
+运行时数据区概述及线程前言本节主要讲的是运行时数据区，也就是下图这部分，它是在类加载完成后的阶段
+
+
+当我们通过前,"/>
+    
+<link rel="stylesheet" href="/css/diaspora.css">
+
+<meta name="generator" content="Hexo 6.1.0"></head>
+
+<body class="loading">
+    <span id="config-title" style="display:none">COAIX</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="iconfont icon-home image-icon" href="javascript:;" data-url="http://coaix.cloud"></a>
+    <div title="播放/暂停" class="iconfont icon-play"></div>
+    <h3 class="subtitle">运行时数据区</h3>
+    <div class="social">
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="iconfont icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class='main'>
+        <h1 class="title">运行时数据区</h1>
+        <div class="stuff">
+            <span>十二月 05, 2021</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <blockquote>
+<p>此章把运行时数据区里比较少的地方讲一下。虚拟机栈，堆，方法区这些地方后续再讲。</p>
+</blockquote>
+<h1 id="运行时数据区概述及线程"><a href="#运行时数据区概述及线程" class="headerlink" title="运行时数据区概述及线程"></a>运行时数据区概述及线程</h1><h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>本节主要讲的是运行时数据区，也就是下图这部分，它是在类加载完成后的阶段</p>
+<img src="https://unpkg.zhimg.com/youthlql@1.0.8/JVM/chapter_003/0001.png">
+
+<p>当我们通过前面的：类的加载 –&gt; 验证 –&gt; 准备 –&gt; 解析 –&gt; 初始化，这几个阶段完成后，就会用到执行引擎对我们的类进行使用，同时执行引擎将会使用到我们运行时数据区</p>
+<img src="https://unpkg.zhimg.com/youthlql@1.0.8/JVM/chapter_003/0002.png">
+
+<p>类比一下也就是大厨做饭，我们把大厨后面的东西（切好的菜，刀，调料），比作是运行时数据区。而厨师可以类比于执行引擎，将通过准备的东西进行制作成精美的菜品。</p>
+<img src="https://unpkg.zhimg.com/youthlql@1.0.8/JVM/chapter_003/0003.png">
+
+
+
+<h2 id="运行时数据区结构"><a href="#运行时数据区结构" class="headerlink" title="运行时数据区结构"></a>运行时数据区结构</h2><h3 id="运行时数据区与内存"><a href="#运行时数据区与内存" class="headerlink" title="运行时数据区与内存"></a>运行时数据区与内存</h3><ol>
+<li><p>内存是非常重要的系统资源，是硬盘和CPU的中间仓库及桥梁，承载着操作系统和应用程序的实时运行。JVM内存布局规定了Java在运行过程中内存申请、分配、管理的策略，保证了JVM的高效稳定运行。<strong>不同的JVM对于内存的划分方式和管理机制存在着部分差异</strong>。结合JVM虚拟机规范，来探讨一下经典的JVM内存布局。</p>
+</li>
+<li><p>我们通过磁盘或者网络IO得到的数据，都需要先加载到内存中，然后CPU从内存中获取数据进行读取，也就是说内存充当了CPU和磁盘之间的桥梁</p>
+</li>
+</ol>
+<blockquote>
+<p>下图来自阿里巴巴手册JDK8</p>
+</blockquote>
+<img src="https://unpkg.zhimg.com/youthlql@1.0.8/JVM/chapter_003/0004.jpg">
+
+
+
+<h3 id="线程的内存空间"><a href="#线程的内存空间" class="headerlink" title="线程的内存空间"></a>线程的内存空间</h3><ol>
+<li><p>Java虚拟机定义了若干种程序运行期间会使用到的运行时数据区：其中有一些会随着虚拟机启动而创建，随着虚拟机退出而销毁。另外一些则是与<strong>线程</strong>一一对应的，这些与线程对应的数据区域会随着线程开始和结束而创建和销毁。</p>
+</li>
+<li><p>灰色的为单独线程私有的，红色的为多个线程共享的。即：</p>
+<ul>
+<li>线程独有：独立包括程序计数器、栈、本地方法栈</li>
+<li>线程间共享：堆、堆外内存（永久代或元空间、代码缓存）</li>
+</ul>
+</li>
+</ol>
+<img src="https://unpkg.zhimg.com/youthlql@1.0.8/JVM/chapter_003/0005.png">
+
+
+
+<h3 id="Runtime类"><a href="#Runtime类" class="headerlink" title="Runtime类"></a>Runtime类</h3><p><strong>每个JVM只有一个Runtime实例</strong>。即为运行时环境，相当于内存结构的中间的那个框框：运行时环境。</p>
+<img src="https://unpkg.zhimg.com/youthlql@1.0.8/JVM/chapter_003/0006.png">
+
+
+
+<h2 id="线程"><a href="#线程" class="headerlink" title="线程"></a>线程</h2><h3 id="JVM-线程"><a href="#JVM-线程" class="headerlink" title="JVM 线程"></a>JVM 线程</h3><ol>
+<li>线程是一个程序里的运行单元。JVM允许一个应用有多个线程<strong>并行</strong>的执行</li>
+<li><strong>在Hotspot JVM里，每个线程都与操作系统的本地线程直接映射</strong><ul>
+<li>当一个Java线程准备好执行以后，此时一个操作系统的本地线程也同时创建。Java线程执行终止后，本地线程也会回收</li>
+</ul>
+</li>
+<li><strong>操作系统</strong>负责将线程安排调度到任何一个可用的CPU上。一旦本地线程初始化成功，它就会调用Java线程中的run()方法</li>
+</ol>
+<blockquote>
+<p>关于线程，并发可以看笔者的Java并发系列</p>
+</blockquote>
+<h3 id="JVM-系统线程"><a href="#JVM-系统线程" class="headerlink" title="JVM 系统线程"></a>JVM 系统线程</h3><ul>
+<li><p>如果你使用jconsole或者是任何一个调试工具，都能看到在后台有许多线程在运行。这些后台线程不包括调用<code>public static void main(String[])</code>的main线程以及所有这个main线程自己创建的线程。</p>
+</li>
+<li><p>这些主要的后台系统线程在Hotspot JVM里主要是以下几个：</p>
+</li>
+</ul>
+<ol>
+<li><strong>虚拟机线程</strong>：这种线程的操作是需要JVM达到安全点才会出现。这些操作必须在不同的线程中发生的原因是他们都需要JVM达到安全点，这样堆才不会变化。这种线程的执行类型括”stop-the-world”的垃圾收集，线程栈收集，线程挂起以及偏向锁撤销</li>
+<li><strong>周期任务线程</strong>：这种线程是时间周期事件的体现（比如中断），他们一般用于周期性操作的调度执行</li>
+<li><strong>GC线程</strong>：这种线程对在JVM里不同种类的垃圾收集行为提供了支持</li>
+<li><strong>编译线程</strong>：这种线程在运行时会将字节码编译成到本地代码</li>
+<li><strong>信号调度线程</strong>：这种线程接收信号并发送给JVM，在它内部通过调用适当的方法进行处理</li>
+</ol>
+<h1 id="程序计数器-PC寄存器"><a href="#程序计数器-PC寄存器" class="headerlink" title="程序计数器(PC寄存器)"></a>程序计数器(PC寄存器)</h1><h2 id="PC寄存器介绍"><a href="#PC寄存器介绍" class="headerlink" title="PC寄存器介绍"></a>PC寄存器介绍</h2><blockquote>
+<p>官方文档网址：<a target="_blank" rel="noopener" href="https://docs.oracle.com/javase/specs/jvms/se8/html/index.html">https://docs.oracle.com/javase/specs/jvms/se8/html/index.html</a></p>
+</blockquote>
+<img src="https://unpkg.zhimg.com/youthlql@1.0.8/JVM/chapter_003/0007.png">
+
+<ol>
+<li>JVM中的程序计数寄存器（Program Counter Register）中，Register的命名源于CPU的寄存器，<strong>寄存器存储指令相关的现场信息</strong>。CPU只有把数据装载到寄存器才能够运行。</li>
+<li>这里，并非是广义上所指的物理寄存器，或许将其翻译为PC计数器（或指令计数器）会更加贴切（也称为程序钩子），并且也不容易引起一些不必要的误会。<strong>JVM中的PC寄存器是对物理PC寄存器的一种抽象模拟</strong>。</li>
+<li>它是一块很小的内存空间，几乎可以忽略不记。也是运行速度最快的存储区域。</li>
+<li>在JVM规范中，每个线程都有它自己的程序计数器，是线程私有的，生命周期与线程的生命周期保持一致。</li>
+<li>任何时间一个线程都只有一个方法在执行，也就是所谓的<strong>当前方法</strong>。程序计数器会存储当前线程正在执行的Java方法的JVM指令地址；或者，如果是在执行native方法，则是未指定值（undefned）。</li>
+<li>它是<strong>程序控制流</strong>的指示器，分支、循环、跳转、异常处理、线程恢复等基础功能都需要依赖这个计数器来完成。</li>
+<li>字节码解释器工作时就是通过改变这个计数器的值来选取下一条需要执行的字节码指令。</li>
+<li>它是<strong>唯一一个</strong>在Java虚拟机规范中没有规定任何OutOfMemoryError情况的区域。</li>
+</ol>
+<h2 id="PC寄存器的作用"><a href="#PC寄存器的作用" class="headerlink" title="PC寄存器的作用"></a>PC寄存器的作用</h2><p><strong>PC寄存器用来存储指向下一条指令的地址</strong>，也即将要执行的指令代码。<strong>由执行引擎读取下一条指令</strong>，并执行该指令。</p>
+<img src="https://unpkg.zhimg.com/youthlql@1.0.8/JVM/chapter_003/0008.png">
+
+
+
+<h2 id="举例"><a href="#举例" class="headerlink" title="举例"></a>举例</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">PCRegisterTest</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> &#123;</span><br><span class="line">        <span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">10</span>;</span><br><span class="line">        <span class="type">int</span> <span class="variable">j</span> <span class="operator">=</span> <span class="number">20</span>;</span><br><span class="line">        <span class="type">int</span> <span class="variable">k</span> <span class="operator">=</span> i + j;</span><br><span class="line"></span><br><span class="line">        <span class="type">String</span> <span class="variable">s</span> <span class="operator">=</span> <span class="string">&quot;abc&quot;</span>;</span><br><span class="line">        System.out.println(i);</span><br><span class="line">        System.out.println(k);</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>查看字节码</p>
+<blockquote>
+<p>看字节码的方法：<a target="_blank" rel="noopener" href="https://blog.csdn.net/21aspnet/article/details/88351875">https://blog.csdn.net/21aspnet/article/details/88351875</a></p>
+</blockquote>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br></pre></td><td class="code"><pre><span class="line">Classfile /F:/IDEAWorkSpaceSourceCode/JVMDemo/out/production/chapter04/com/atguigu/java/PCRegisterTest.<span class="keyword">class</span></span><br><span class="line">  <span class="title class_">Last</span> modified <span class="number">2020</span>-<span class="number">11</span>-<span class="number">2</span>; size <span class="number">675</span> bytes</span><br><span class="line">  MD5 checksum 53b3ef104479ec9e9b7ce5319e5881d3</span><br><span class="line">  Compiled from <span class="string">&quot;PCRegisterTest.java&quot;</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">com</span>.atguigu.java.PCRegisterTest</span><br><span class="line">  minor version: <span class="number">0</span></span><br><span class="line">  major version: <span class="number">52</span></span><br><span class="line">  flags: ACC_PUBLIC, ACC_SUPER</span><br><span class="line">Constant pool:</span><br><span class="line">   #<span class="number">1</span> = Methodref          #<span class="number">6.</span>#<span class="number">26</span>         <span class="comment">// java/lang/Object.&quot;&lt;init&gt;&quot;:()V</span></span><br><span class="line">   #<span class="number">2</span> = String             #<span class="number">27</span>            <span class="comment">// abc</span></span><br><span class="line">   #<span class="number">3</span> = Fieldref           #<span class="number">28.</span>#<span class="number">29</span>        <span class="comment">// java/lang/System.out:Ljava/io/PrintStream;</span></span><br><span class="line">   #<span class="number">4</span> = Methodref          #<span class="number">30.</span>#<span class="number">31</span>        <span class="comment">// java/io/PrintStream.println:(I)V</span></span><br><span class="line">   #<span class="number">5</span> = Class              #<span class="number">32</span>            <span class="comment">// com/atguigu/java/PCRegisterTest</span></span><br><span class="line">   #<span class="number">6</span> = Class              #<span class="number">33</span>            <span class="comment">// java/lang/Object</span></span><br><span class="line">   #<span class="number">7</span> = Utf8               &lt;init&gt;</span><br><span class="line">   #<span class="number">8</span> = Utf8               ()V</span><br><span class="line">   #<span class="number">9</span> = Utf8               Code</span><br><span class="line">  #<span class="number">10</span> = Utf8               LineNumberTable</span><br><span class="line">  #<span class="number">11</span> = Utf8               LocalVariableTable</span><br><span class="line">  #<span class="number">12</span> = Utf8               <span class="built_in">this</span></span><br><span class="line">  #<span class="number">13</span> = Utf8               Lcom/atguigu/java/PCRegisterTest;</span><br><span class="line">  #<span class="number">14</span> = Utf8               main</span><br><span class="line">  #<span class="number">15</span> = Utf8               ([Ljava/lang/String;)V</span><br><span class="line">  #<span class="number">16</span> = Utf8               args</span><br><span class="line">  #<span class="number">17</span> = Utf8               [Ljava/lang/String;</span><br><span class="line">  #<span class="number">18</span> = Utf8               i</span><br><span class="line">  #<span class="number">19</span> = Utf8               I</span><br><span class="line">  #<span class="number">20</span> = Utf8               j</span><br><span class="line">  #<span class="number">21</span> = Utf8               k</span><br><span class="line">  #<span class="number">22</span> = Utf8               s</span><br><span class="line">  #<span class="number">23</span> = Utf8               Ljava/lang/String;</span><br><span class="line">  #<span class="number">24</span> = Utf8               SourceFile</span><br><span class="line">  #<span class="number">25</span> = Utf8               PCRegisterTest.java</span><br><span class="line">  #<span class="number">26</span> = NameAndType        #<span class="number">7</span>:#<span class="number">8</span>          <span class="comment">// &quot;&lt;init&gt;&quot;:()V</span></span><br><span class="line">  #<span class="number">27</span> = Utf8               abc</span><br><span class="line">  #<span class="number">28</span> = Class              #<span class="number">34</span>            <span class="comment">// java/lang/System</span></span><br><span class="line">  #<span class="number">29</span> = NameAndType        #<span class="number">35</span>:#<span class="number">36</span>        <span class="comment">// out:Ljava/io/PrintStream;</span></span><br><span class="line">  #<span class="number">30</span> = Class              #<span class="number">37</span>            <span class="comment">// java/io/PrintStream</span></span><br><span class="line">  #<span class="number">31</span> = NameAndType        #<span class="number">38</span>:#<span class="number">39</span>        <span class="comment">// println:(I)V</span></span><br><span class="line">  #<span class="number">32</span> = Utf8               com/atguigu/java/PCRegisterTest</span><br><span class="line">  #<span class="number">33</span> = Utf8               java/lang/Object</span><br><span class="line">  #<span class="number">34</span> = Utf8               java/lang/System</span><br><span class="line">  #<span class="number">35</span> = Utf8               out</span><br><span class="line">  #<span class="number">36</span> = Utf8               Ljava/io/PrintStream;</span><br><span class="line">  #<span class="number">37</span> = Utf8               java/io/PrintStream</span><br><span class="line">  #<span class="number">38</span> = Utf8               println</span><br><span class="line">  #<span class="number">39</span> = Utf8               (I)V</span><br><span class="line">&#123;</span><br><span class="line">  <span class="keyword">public</span> com.atguigu.java.PCRegisterTest();</span><br><span class="line">    descriptor: ()V</span><br><span class="line">    flags: ACC_PUBLIC</span><br><span class="line">    Code:</span><br><span class="line">      stack=<span class="number">1</span>, locals=<span class="number">1</span>, args_size=<span class="number">1</span></span><br><span class="line">         <span class="number">0</span>: aload_0</span><br><span class="line">         <span class="number">1</span>: invokespecial #<span class="number">1</span>                  <span class="comment">// Method java/lang/Object.&quot;&lt;init&gt;&quot;:()V</span></span><br><span class="line">         <span class="number">4</span>: <span class="keyword">return</span></span><br><span class="line">      LineNumberTable:</span><br><span class="line">        line <span class="number">7</span>: <span class="number">0</span></span><br><span class="line">      LocalVariableTable:</span><br><span class="line">        Start  Length  Slot  Name   Signature</span><br><span class="line">            <span class="number">0</span>       <span class="number">5</span>     <span class="number">0</span>  <span class="built_in">this</span>   Lcom/atguigu/java/PCRegisterTest;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(java.lang.String[])</span>;</span><br><span class="line">    descriptor: ([Ljava/lang/String;)V</span><br><span class="line">    flags: ACC_PUBLIC, ACC_STATIC</span><br><span class="line">    Code:</span><br><span class="line">      stack=<span class="number">2</span>, locals=<span class="number">5</span>, args_size=<span class="number">1</span></span><br><span class="line">         <span class="number">0</span>: bipush        <span class="number">10</span></span><br><span class="line">         <span class="number">2</span>: istore_1</span><br><span class="line">         <span class="number">3</span>: bipush        <span class="number">20</span></span><br><span class="line">         <span class="number">5</span>: istore_2</span><br><span class="line">         <span class="number">6</span>: iload_1</span><br><span class="line">         <span class="number">7</span>: iload_2</span><br><span class="line">         <span class="number">8</span>: iadd</span><br><span class="line">         <span class="number">9</span>: istore_3</span><br><span class="line">        <span class="number">10</span>: ldc           #<span class="number">2</span>                  <span class="comment">// String abc</span></span><br><span class="line">        <span class="number">12</span>: astore        <span class="number">4</span></span><br><span class="line">        <span class="number">14</span>: getstatic     #<span class="number">3</span>                  <span class="comment">// Field java/lang/System.out:Ljava/io/PrintStream;</span></span><br><span class="line">        <span class="number">17</span>: iload_1</span><br><span class="line">        <span class="number">18</span>: invokevirtual #<span class="number">4</span>                  <span class="comment">// Method java/io/PrintStream.println:(I)V</span></span><br><span class="line">        <span class="number">21</span>: getstatic     #<span class="number">3</span>                  <span class="comment">// Field java/lang/System.out:Ljava/io/PrintStream;</span></span><br><span class="line">        <span class="number">24</span>: iload_3</span><br><span class="line">        <span class="number">25</span>: invokevirtual #<span class="number">4</span>                  <span class="comment">// Method java/io/PrintStream.println:(I)V</span></span><br><span class="line">        <span class="number">28</span>: <span class="keyword">return</span></span><br><span class="line">      LineNumberTable:</span><br><span class="line">        line <span class="number">10</span>: <span class="number">0</span></span><br><span class="line">        line <span class="number">11</span>: <span class="number">3</span></span><br><span class="line">        line <span class="number">12</span>: <span class="number">6</span></span><br><span class="line">        line <span class="number">14</span>: <span class="number">10</span></span><br><span class="line">        line <span class="number">15</span>: <span class="number">14</span></span><br><span class="line">        line <span class="number">16</span>: <span class="number">21</span></span><br><span class="line">        line <span class="number">18</span>: <span class="number">28</span></span><br><span class="line">      LocalVariableTable:</span><br><span class="line">        Start  Length  Slot  Name   Signature</span><br><span class="line">            <span class="number">0</span>      <span class="number">29</span>     <span class="number">0</span>  args   [Ljava/lang/String;</span><br><span class="line">            <span class="number">3</span>      <span class="number">26</span>     <span class="number">1</span>     i   I</span><br><span class="line">            <span class="number">6</span>      <span class="number">23</span>     <span class="number">2</span>     j   I</span><br><span class="line">           <span class="number">10</span>      <span class="number">19</span>     <span class="number">3</span>     k   I</span><br><span class="line">           <span class="number">14</span>      <span class="number">15</span>     <span class="number">4</span>     s   Ljava/lang/String;</span><br><span class="line">&#125;</span><br><span class="line">SourceFile: <span class="string">&quot;PCRegisterTest.java&quot;</span></span><br></pre></td></tr></table></figure>
+
+
+
+<ul>
+<li>左边的数字代表<strong>指令地址（指令偏移）</strong>，即 PC 寄存器中可能存储的值，然后执行引擎读取 PC 寄存器中的值，并执行该指令</li>
+</ul>
+<img src="https://unpkg.zhimg.com/youthlql@1.0.8/JVM/chapter_003/0009.png">
+
+
+
+<h2 id="两个面试题"><a href="#两个面试题" class="headerlink" title="两个面试题"></a>两个面试题</h2><p><strong>使用PC寄存器存储字节码指令地址有什么用呢？</strong>或者问<strong>为什么使用 PC 寄存器来记录当前线程的执行地址呢？</strong></p>
+<ol>
+<li><p>因为CPU需要不停的切换各个线程，这时候切换回来以后，就得知道接着从哪开始继续执行</p>
+</li>
+<li><p>JVM的字节码解释器就需要通过改变PC寄存器的值来明确下一条应该执行什么样的字节码指令</p>
+</li>
+</ol>
+<img src="https://unpkg.zhimg.com/youthlql@1.0.8/JVM/chapter_003/0010.png">
+
+
+
+<p><strong>PC寄存器为什么被设定为私有的？</strong></p>
+<ol>
+<li>我们都知道所谓的多线程在一个特定的时间段内只会执行其中某一个线程的方法，CPU会不停地做任务切换，这样必然导致经常中断或恢复，如何保证分毫无差呢？<strong>为了能够准确地记录各个线程正在执行的当前字节码指令地址，最好的办法自然是为每一个线程都分配一个PC寄存器</strong>，这样一来各个线程之间便可以进行独立计算，从而不会出现相互干扰的情况。</li>
+<li>由于CPU时间片轮限制，众多线程在并发执行过程中，任何一个确定的时刻，一个处理器或者多核处理器中的一个内核，只会执行某个线程中的一条指令。</li>
+<li>这样必然导致经常中断或恢复，如何保证分毫无差呢？每个线程在创建后，都会产生自己的程序计数器和栈帧，程序计数器在各个线程之间互不影响。</li>
+</ol>
+<h2 id="CPU-时间片"><a href="#CPU-时间片" class="headerlink" title="CPU 时间片"></a>CPU 时间片</h2><ol>
+<li><p>CPU时间片即CPU分配给各个程序的时间，每个线程被分配一个时间段，称作它的时间片。</p>
+</li>
+<li><p>在宏观上：我们可以同时打开多个应用程序，每个程序并行不悖，同时运行。</p>
+</li>
+<li><p>但在微观上：由于只有一个CPU，一次只能处理程序要求的一部分，如何处理公平，一种方法就是引入时间片，<strong>每个程序轮流执行</strong>。</p>
+</li>
+</ol>
+<img src="https://unpkg.zhimg.com/youthlql@1.0.8/JVM/chapter_003/0011.png">
+
+
+
+<h1 id="本地方法接口"><a href="#本地方法接口" class="headerlink" title="本地方法接口"></a>本地方法接口</h1><h2 id="本地方法"><a href="#本地方法" class="headerlink" title="本地方法"></a>本地方法</h2><img src="https://unpkg.zhimg.com/youthlql@1.0.8/JVM/chapter_003/0012.png">
+
+
+
+<ol>
+<li>简单地讲，<strong>一个Native Method是一个Java调用非Java代码的接囗</strong>一个Native Method是这样一个Java方法：该方法的实现由非Java语言实现，比如C。这个特征并非Java所特有，很多其它的编程语言都有这一机制，比如在C++中，你可以用extern 告知C++编译器去调用一个C的函数。</li>
+<li>“A native method is a Java method whose implementation is provided by non-java code.”（本地方法是一个非Java的方法，它的具体实现是非Java代码的实现）</li>
+<li>在定义一个native method时，并不提供实现体（有些像定义一个Java interface），因为其实现体是由非java语言在外面实现的。</li>
+<li>本地接口的作用是融合不同的编程语言为Java所用，它的初衷是融合C&#x2F;C++程序。</li>
+</ol>
+<h2 id="举例-1"><a href="#举例-1" class="headerlink" title="举例"></a>举例</h2><p>需要注意的是：标识符native可以与其它java标识符连用，但是abstract除外</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">IHaveNatives</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">native</span> <span class="keyword">void</span> <span class="title function_">Native1</span><span class="params">(<span class="type">int</span> x)</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">native</span> <span class="keyword">static</span> <span class="type">long</span> <span class="title function_">Native2</span><span class="params">()</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">native</span> <span class="keyword">synchronized</span> <span class="type">float</span> <span class="title function_">Native3</span><span class="params">(Object o)</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">native</span> <span class="keyword">void</span> <span class="title function_">Native4</span><span class="params">(<span class="type">int</span>[] ary)</span> <span class="keyword">throws</span> Exception;</span><br><span class="line">    </span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="为什么要使用-Native-Method？"><a href="#为什么要使用-Native-Method？" class="headerlink" title="为什么要使用 Native Method？"></a>为什么要使用 Native Method？</h2><p>Java使用起来非常方便，然而有些层次的任务用Java实现起来不容易，或者我们对程序的效率很在意时，问题就来了。</p>
+<h3 id="与Java环境外交互"><a href="#与Java环境外交互" class="headerlink" title="与Java环境外交互"></a>与Java环境外交互</h3><p><strong>有时Java应用需要与Java外面的硬件环境交互，这是本地方法存在的主要原因</strong>。你可以想想Java需要与一些<strong>底层系统</strong>，如操作系统或某些硬件交换信息时的情况。本地方法正是这样一种交流机制：它为我们提供了一个非常简洁的接口，而且我们无需去了解Java应用之外的繁琐的细节。</p>
+<h3 id="与操作系统的交互"><a href="#与操作系统的交互" class="headerlink" title="与操作系统的交互"></a>与操作系统的交互</h3><ol>
+<li>JVM支持着Java语言本身和运行时库，它是Java程序赖以生存的平台，它由一个解释器（解释字节码）和一些连接到本地代码的库组成。</li>
+<li>然而不管怎样，它毕竟不是一个完整的系统，它经常依赖于一底层系统的支持。这些底层系统常常是强大的操作系统。</li>
+<li><strong>通过使用本地方法，我们得以用Java实现了jre的与底层系统的交互，甚至JVM的一些部分就是用C写的</strong>。</li>
+<li>还有，如果我们要使用一些Java语言本身没有提供封装的操作系统的特性时，我们也需要使用本地方法。</li>
+</ol>
+<h3 id="Sun’s-Java"><a href="#Sun’s-Java" class="headerlink" title="Sun’s Java"></a>Sun’s Java</h3><ol>
+<li>Sun的解释器是用C实现的，这使得它能像一些普通的C一样与外部交互。jre大部分是用Java实现的，它也通过一些本地方法与外界交互。</li>
+<li>例如：类java.lang.Thread的setPriority()方法是用Java实现的，但是它实现调用的是该类里的本地方法setPriority0()。这个本地方法是用C实现的，并被植入JVM内部在Windows 95的平台上，这个本地方法最终将调用Win32 setpriority() API。这是一个本地方法的具体实现由JVM直接提供，更多的情况是本地方法由外部的动态链接库（external dynamic link library）提供，然后被JVM调用。</li>
+</ol>
+<h3 id="本地方法的现状"><a href="#本地方法的现状" class="headerlink" title="本地方法的现状"></a>本地方法的现状</h3><p>目前该方法使用的越来越少了，除非是与硬件有关的应用，比如通过Java程序驱动打印机或者Java系统管理生产设备，在企业级应用中已经比较少见。因为现在的异构领域间的通信很发达，比如可以使用Socket通信，也可以使用Web Service等等，不多做介绍。</p>
+<h1 id="本地方法栈"><a href="#本地方法栈" class="headerlink" title="本地方法栈"></a>本地方法栈</h1><ol>
+<li><strong>Java虚拟机栈于管理Java方法的调用，而本地方法栈用于管理本地方法的调用</strong>。</li>
+<li>本地方法栈，也是线程私有的。</li>
+<li>允许被实现成固定或者是可动态扩展的内存大小（在内存溢出方面和虚拟机栈相同）<ul>
+<li>如果线程请求分配的栈容量超过本地方法栈允许的最大容量，Java虚拟机将会抛出一个stackoverflowError 异常。</li>
+<li>如果本地方法栈可以动态扩展，并且在尝试扩展的时候无法申请到足够的内存，或者在创建新的线程时没有足够的内存去创建对应的本地方法栈，那么Java虚拟机将会抛出一个outofMemoryError异常。</li>
+</ul>
+</li>
+<li>本地方法一般是使用C语言或C++语言实现的。</li>
+<li>它的具体做法是Native Method Stack中登记native方法，在Execution Engine 执行时加载本地方法库。</li>
+</ol>
+<img src="https://unpkg.zhimg.com/youthlql@1.0.8/JVM/chapter_003/0013.png">
+
+
+
+<p><strong>注意事项</strong></p>
+<ol>
+<li>当某个线程调用一个本地方法时，它就进入了一个全新的并且不再受虚拟机限制的世界。它和虚拟机拥有同样的权限。<ul>
+<li>本地方法可以通过本地方法接口来访问虚拟机内部的运行时数据区</li>
+<li>它甚至可以直接使用本地处理器中的寄存器</li>
+<li>直接从本地内存的堆中分配任意数量的内存</li>
+</ul>
+</li>
+<li>并不是所有的JVM都支持本地方法。因为Java虚拟机规范并没有明确要求本地方法栈的使用语言、具体实现方式、数据结构等。如果JVM产品不打算支持native方法，也可以无需实现本地方法栈。</li>
+<li>在Hotspot JVM中，直接将本地方法栈和虚拟机栈合二为一。</li>
+</ol>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link"
+		data-enable="false"
+        data-ae="false"
+        data-ci=""
+        data-cs=""
+        data-r=""
+        data-o=""
+        data-a=""
+        data-d="false"
+    >查看评论</div>
+
+
+    </div>
+    
+</div>
+
+
+    </div>
+</div>
+</body>
+
+
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/typed.js"></script>
+<script src="/js/diaspora.js"></script>
+
+
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+
+
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+</html>
